@@ -10,11 +10,15 @@ import { FilesService } from './files.service'
 import { FileValidationService } from './file-validation.service'
 import { FileStorageService } from './file-storage.service'
 import { StorageModule } from '../storage/storage.module'
+import { CacheModule } from '../cache/cache.module'
+import { CDNModule } from '../cdn/cdn.module'
 
 @Module({
   imports: [
     ConfigModule,
     StorageModule,
+    CacheModule,
+    CDNModule,
     MulterModule.registerAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({
@@ -38,24 +42,47 @@ import { StorageModule } from '../storage/storage.module'
           // Basic file filter - detailed validation in service
           const allowedMimes = [
             // Images
-            'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml',
+            'image/jpeg',
+            'image/png',
+            'image/gif',
+            'image/webp',
+            'image/svg+xml',
             // Scripts
-            'application/javascript', 'text/javascript', 'application/typescript', 'application/json',
+            'application/javascript',
+            'text/javascript',
+            'application/typescript',
+            'application/json',
             // Styles
-            'text/css', 'text/scss', 'text/less',
+            'text/css',
+            'text/scss',
+            'text/less',
             // Fonts
-            'font/ttf', 'font/woff', 'font/woff2', 'application/vnd.ms-fontobject',
+            'font/ttf',
+            'font/woff',
+            'font/woff2',
+            'application/vnd.ms-fontobject',
             // Documents
-            'application/pdf', 'text/plain', 'application/msword', 
+            'application/pdf',
+            'text/plain',
+            'application/msword',
             'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
             // Music
-            'audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/flac', 'audio/ogg',
+            'audio/mpeg',
+            'audio/mp3',
+            'audio/wav',
+            'audio/flac',
+            'audio/ogg',
             // Videos
-            'video/mp4', 'video/avi', 'video/mov', 'video/wmv',
+            'video/mp4',
+            'video/avi',
+            'video/mov',
+            'video/wmv',
             // Archives
-            'application/zip', 'application/x-rar-compressed', 'application/x-7z-compressed',
+            'application/zip',
+            'application/x-rar-compressed',
+            'application/x-7z-compressed',
           ]
-          
+
           if (allowedMimes.includes(file.mimetype)) {
             cb(null, true)
           } else {
@@ -67,11 +94,7 @@ import { StorageModule } from '../storage/storage.module'
     }),
   ],
   controllers: [FilesController],
-  providers: [
-    FilesService,
-    FileValidationService,
-    FileStorageService,
-  ],
+  providers: [FilesService, FileValidationService, FileStorageService],
   exports: [FilesService],
 })
 export class FilesModule {}

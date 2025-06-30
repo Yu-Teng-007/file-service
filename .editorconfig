@@ -1,0 +1,80 @@
+# top-most EditorConfig file
+root = true
+
+# 所有文件的通用设置
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+# JavaScript/TypeScript 和相关文件
+[*.{js,jsx,mjs,cjs,ts,tsx,mts,cts}]
+indent_size = 2
+indent_style = space
+max_line_length = 100
+
+# JSON 配置文件
+[*.{json,jsonc}]
+indent_size = 2
+indent_style = space
+max_line_length = 120
+
+# YAML 配置文件
+[*.{yml,yaml}]
+indent_size = 2
+indent_style = space
+max_line_length = 120
+
+# 环境配置文件
+[*.env*]
+indent_size = 2
+indent_style = space
+max_line_length = 120
+
+# HTTP 测试文件
+[*.http]
+indent_size = 2
+indent_style = space
+max_line_length = 120
+
+# Markdown 文档
+[*.md]
+indent_size = 2
+indent_style = space
+max_line_length = 120
+trim_trailing_whitespace = false
+
+# SQL 文件
+[*.sql]
+indent_size = 2
+indent_style = space
+max_line_length = 120
+
+# Shell 脚本
+[*.{sh,bash}]
+indent_size = 2
+indent_style = space
+max_line_length = 120
+
+# 配置文件（各种格式）
+[*.{toml,ini,cfg,conf}]
+indent_size = 2
+indent_style = space
+max_line_length = 120
+
+# XML 文件
+[*.xml]
+indent_size = 2
+indent_style = space
+max_line_length = 120
+
+# 日志文件（不修改格式）
+[*.{log,logs}]
+insert_final_newline = false
+trim_trailing_whitespace = false
+
+# 特殊文件（保持原样）
+[{Makefile,makefile,*.mk}]
+indent_style = tab
+indent_size = 4

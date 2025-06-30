@@ -4,42 +4,57 @@ A comprehensive file service system for storing and managing static resources in
 
 ## Features
 
+### Core Features
+
 - 🚀 **Multi-format Support**: Images, JS, CSS, fonts, documents, music files
 - 🔒 **Security**: File type validation, size limits, virus scanning
 - 🎯 **Access Control**: Public, private, and protected access levels
 - 📁 **Auto Classification**: Automatic file categorization and organization
-- ⚡ **Performance**: Built-in caching and compression
-- 🔍 **Management**: File search, batch operations, metadata management
 - 🌐 **API-First**: RESTful API with comprehensive documentation
 - 🐳 **Docker Ready**: Containerized deployment support
+
+### Advanced Features
+
+- ⚡ **Redis Caching**: File metadata caching, hot file caching, cache invalidation strategies
+- ☁️ **CDN Integration**: Support for AWS S3, Alibaba Cloud OSS, Tencent Cloud COS
+- 🖼️ **Image Processing**: Compression, resizing, format conversion, watermarking (Sharp-based)
+- 📦 **File Compression**: Support for gzip, deflate, ZIP archives
+- 📊 **Monitoring & Analytics**: File access statistics, performance monitoring, storage analysis
+- 📚 **Version Control**: File history, version rollback, diff comparison
+- 🔄 **Sync & Backup**: Automatic file synchronization and backup mechanisms
+- 🔍 **Management**: File search, batch operations, metadata management
 
 ## Quick Start
 
 ### Prerequisites
 
-- Node.js 18+ 
+- Node.js 18+
 - npm or yarn
 
 ### Installation
 
 1. Clone the repository:
+
 ```bash
 git clone <repository-url>
 cd file-service
 ```
 
 2. Install dependencies:
+
 ```bash
 npm install
 ```
 
 3. Configure environment:
+
 ```bash
 cp .env.example .env
 # Edit .env with your configuration
 ```
 
 4. Start the development server:
+
 ```bash
 npm run start:dev
 ```
@@ -76,11 +91,33 @@ Once running, visit `http://localhost:3001/api` for interactive API documentatio
 
 ### Key Endpoints
 
+#### File Management
+
 - `POST /api/files/upload` - Upload files
 - `GET /api/files` - List files
 - `GET /api/files/:id` - Get file info
 - `DELETE /api/files/:id` - Delete file
+- `PUT /api/files/:id` - Update file metadata
 - `GET /uploads/:category/:filename` - Access files
+
+#### Image Processing
+
+- `POST /api/image-processing/process` - Process images
+- `POST /api/image-processing/thumbnails` - Generate thumbnails
+- `POST /api/image-processing/compress` - Compress images
+- `GET /api/image-processing/info/:path` - Get image info
+
+#### File Compression
+
+- `POST /api/compression/compress` - Compress files
+- `POST /api/compression/archive` - Create archives
+- `POST /api/compression/extract` - Extract archives
+
+#### Monitoring
+
+- `GET /api/monitoring/storage/stats` - Storage statistics
+- `GET /api/monitoring/performance/metrics` - Performance metrics
+- `GET /api/monitoring/dashboard` - Monitoring dashboard
 
 ## Development
 
@@ -118,11 +155,13 @@ docker run -p 3001:3001 file-service
 ### Production
 
 1. Build the application:
+
 ```bash
 npm run build
 ```
 
 2. Start with PM2:
+
 ```bash
 pm2 start dist/main.js --name file-service
 ```

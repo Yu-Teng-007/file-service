@@ -2,11 +2,17 @@ import { Module } from '@nestjs/common'
 import { ConfigModule, ConfigService } from '@nestjs/config'
 import { ServeStaticModule } from '@nestjs/serve-static'
 import { ThrottlerModule } from '@nestjs/throttler'
+import { ScheduleModule } from '@nestjs/schedule'
 import { join } from 'path'
 
 import { AppController } from './app.controller'
 import { AppService } from './app.service'
 import { FilesModule } from './modules/files/files.module'
+import { CacheModule } from './modules/cache/cache.module'
+import { CDNModule } from './modules/cdn/cdn.module'
+import { ImageProcessingModule } from './modules/image-processing/image-processing.module'
+import { CompressionModule } from './modules/compression/compression.module'
+import { MonitoringModule } from './modules/monitoring/monitoring.module'
 import { AuthModule } from './modules/auth/auth.module'
 import { StorageModule } from './modules/storage/storage.module'
 
@@ -47,10 +53,18 @@ import { StorageModule } from './modules/storage/storage.module'
       inject: [ConfigService],
     }),
 
+    // Scheduling for background tasks
+    ScheduleModule.forRoot(),
+
     // Feature modules
     FilesModule,
     AuthModule,
     StorageModule,
+    CacheModule,
+    CDNModule,
+    ImageProcessingModule,
+    CompressionModule,
+    MonitoringModule,
   ],
   controllers: [AppController],
   providers: [AppService],

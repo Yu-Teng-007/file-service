@@ -4,6 +4,7 @@ import { promises as fs } from 'fs'
 
 import { FileValidationService } from './file-validation.service'
 import { FileStorageService } from './file-storage.service'
+import { CacheService } from '../cache/cache.service'
 import {
   UploadedFileInfo,
   FileSearchQuery,
@@ -26,6 +27,7 @@ export class FilesService {
     private readonly configService: ConfigService,
     private readonly validationService: FileValidationService,
     private readonly storageService: FileStorageService,
+    private readonly cacheService: CacheService
   ) {}
 
   /**
@@ -72,7 +74,7 @@ export class FilesService {
         {
           mimeType: file.mimetype,
           checksum,
-        },
+        }
       )
 
       return this.mapToResponseDto(fileInfo)
@@ -86,7 +88,10 @@ export class FilesService {
   /**
    * 上传多个文件
    */
-  async uploadMultipleFiles(files: Express.Multer.File[], uploadDto: FileUploadDto): Promise<FileResponseDto[]> {
+  async uploadMultipleFiles(
+    files: Express.Multer.File[],
+    uploadDto: FileUploadDto
+  ): Promise<FileResponseDto[]> {
     if (!files || files.length === 0) {
       throw new BadRequestException('请选择要上传的文件')
     }

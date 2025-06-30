@@ -14,6 +14,9 @@ import {
   ParseUUIDPipe,
 } from '@nestjs/common'
 import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express'
+import { Cacheable, CacheEvict } from '../cache/decorators/cache.decorator'
+import { CacheInterceptor } from '../cache/interceptors/cache.interceptor'
+import { CacheEvictInterceptor } from '../cache/interceptors/cache-evict.interceptor'
 import {
   ApiTags,
   ApiOperation,
@@ -57,7 +60,16 @@ export class FilesController {
         },
         category: {
           type: 'string',
-          enum: ['images', 'scripts', 'styles', 'fonts', 'documents', 'music', 'videos', 'archives'],
+          enum: [
+            'images',
+            'scripts',
+            'styles',
+            'fonts',
+            'documents',
+            'music',
+            'videos',
+            'archives',
+          ],
           description: '文件分类（可选，自动检测）',
         },
         accessLevel: {
@@ -92,7 +104,7 @@ export class FilesController {
   @ApiResponse({ status: HttpStatus.PAYLOAD_TOO_LARGE, description: '文件大小超出限制' })
   async uploadFile(
     @UploadedFile() file: Express.Multer.File,
-    @Body() uploadDto: FileUploadDto,
+    @Body() uploadDto: FileUploadDto
   ): Promise<ApiResponseDto<FileResponseDto>> {
     const result = await this.filesService.uploadFile(file, uploadDto)
     return {
@@ -121,7 +133,16 @@ export class FilesController {
         },
         category: {
           type: 'string',
-          enum: ['images', 'scripts', 'styles', 'fonts', 'documents', 'music', 'videos', 'archives'],
+          enum: [
+            'images',
+            'scripts',
+            'styles',
+            'fonts',
+            'documents',
+            'music',
+            'videos',
+            'archives',
+          ],
           description: '文件分类（可选，自动检测）',
         },
         accessLevel: {
@@ -146,7 +167,7 @@ export class FilesController {
   })
   async uploadMultipleFiles(
     @UploadedFiles() files: Express.Multer.File[],
-    @Body() uploadDto: FileUploadDto,
+    @Body() uploadDto: FileUploadDto
   ): Promise<ApiResponseDto<FileResponseDto[]>> {
     const results = await this.filesService.uploadMultipleFiles(files, uploadDto)
     return {
@@ -157,6 +178,8 @@ export class FilesController {
   }
 
   @Get()
+  @UseInterceptors(CacheInterceptor)
+  @Cacheable('files:list:${category}:${page}:${limit}', 300, ['file-list'])
   @ApiOperation({ summary: '获取文件列表', description: '根据条件搜索和筛选文件列表' })
   @ApiResponse({
     status: HttpStatus.OK,
@@ -189,6 +212,8 @@ export class FilesController {
   }
 
   @Get(':id')
+  @UseInterceptors(CacheInterceptor)
+  @Cacheable('file:${id}', 1800, ['file-metadata'])
   @ApiOperation({ summary: '获取文件详情', description: '根据文件ID获取文件详细信息' })
   @ApiParam({ name: 'id', description: '文件ID' })
   @ApiResponse({
@@ -198,7 +223,7 @@ export class FilesController {
   })
   @ApiResponse({ status: HttpStatus.NOT_FOUND, description: '文件不存在' })
   async getFileById(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id', ParseUUIDPipe) id: string
   ): Promise<ApiResponseDto<FileResponseDto>> {
     const file = await this.filesService.getFileById(id)
     return {
@@ -219,7 +244,7 @@ export class FilesController {
   @ApiResponse({ status: HttpStatus.NOT_FOUND, description: '文件不存在' })
   async updateFile(
     @Param('id', ParseUUIDPipe) id: string,
-    @Body() updateDto: FileUpdateDto,
+    @Body() updateDto: FileUpdateDto
   ): Promise<ApiResponseDto<FileResponseDto>> {
     const file = await this.filesService.updateFile(id, updateDto)
     return {
@@ -230,6 +255,8 @@ export class FilesController {
   }
 
   @Delete(':id')
+  @UseInterceptors(CacheEvictInterceptor)
+  @CacheEvict(['file:${id}', 'tag:file-metadata', 'tag:file-list'])
   @ApiOperation({ summary: '删除文件', description: '根据文件ID删除文件' })
   @ApiParam({ name: 'id', description: '文件ID' })
   @ApiResponse({

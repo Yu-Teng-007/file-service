@@ -1,0 +1,7 @@
+export * from './cdn.module'
+export * from './cdn.service'
+export * from './interfaces/cdn.interface'
+export * from './providers/aws-s3.provider'
+export * from './providers/aliyun-oss.provider'
+export * from './providers/tencent-cos.provider'
+export * from './providers/local.provider'
