@@ -1,5 +1,6 @@
 import { Injectable, Logger, BadRequestException } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
+import * as sharp from 'sharp'
 import { promises as fs } from 'fs'
 import { join } from 'path'
 import {
@@ -8,17 +9,21 @@ import {
   ProcessingResult,
   ThumbnailOptions,
   ThumbnailResult,
+  ResizeOptions,
+  CompressOptions,
+  FormatOptions,
+  FilterOptions,
 } from './interfaces/image-processing.interface'
 
 @Injectable()
 export class ImageProcessingService {
   private readonly logger = new Logger(ImageProcessingService.name)
-  private readonly supportedFormats = ['jpeg', 'jpg', 'png', 'webp', 'gif', 'svg']
+  private readonly supportedFormats = ['jpeg', 'jpg', 'png', 'webp', 'avif', 'tiff', 'gif']
 
   constructor(private configService: ConfigService) {}
 
   /**
-   * 处理图片 (简化版本，不使用Sharp)
+   * 处理图片
    */
   async processImage(
     inputPath: string,
@@ -31,29 +36,42 @@ export class ImageProcessingService {
       // 验证输入文件
       await this.validateImageFile(inputPath)
       
-      // 简单复制文件（暂时不进行实际处理）
+      // 获取原始图片信息
       const originalSize = (await fs.stat(inputPath)).size
-      await fs.copyFile(inputPath, outputPath)
-      const processedSize = originalSize
+      
+      // 创建Sharp实例
+      let pipeline = sharp(inputPath)
+      
+      // 应用各种处理选项
+      pipeline = this.applyProcessingOptions(pipeline, options)
+      
+      // 处理并保存
+      const buffer = await pipeline.toBuffer()
+      await fs.writeFile(outputPath, buffer)
+      
+      // 获取处理后的图片信息
+      const processedInfo = await sharp(buffer).metadata()
+      const processedSize = buffer.length
       
       const result: ProcessingResult = {
-        buffer: await fs.readFile(outputPath),
+        buffer,
         info: {
-          width: 800, // 模拟值
-          height: 600, // 模拟值
-          format: 'jpeg',
+          width: processedInfo.width!,
+          height: processedInfo.height!,
+          format: processedInfo.format!,
           size: processedSize,
-          density: 72,
-          hasAlpha: false,
-          channels: 3,
-          colorspace: 'srgb',
+          density: processedInfo.density,
+          hasAlpha: processedInfo.hasAlpha,
+          channels: processedInfo.channels!,
+          colorspace: processedInfo.space!,
         },
         originalSize,
         processedSize,
-        compressionRatio: 0,
+        compressionRatio: originalSize > 0 ? (originalSize - processedSize) / originalSize : 0,
       }
       
       this.logger.log(`图片处理完成: ${inputPath} -> ${outputPath}`)
+      this.logger.log(`压缩比: ${(result.compressionRatio * 100).toFixed(2)}%`)
       
       return result
     } catch (error) {
@@ -63,7 +81,7 @@ export class ImageProcessingService {
   }
 
   /**
-   * 生成缩略图 (简化版本)
+   * 生成缩略图
    */
   async generateThumbnails(
     inputPath: string,
@@ -74,26 +92,50 @@ export class ImageProcessingService {
       this.logger.log(`开始生成缩略图: ${inputPath}`)
       
       await this.validateImageFile(inputPath)
+      await fs.mkdir(outputDir, { recursive: true })
       
       const thumbnails: ThumbnailResult['thumbnails'] = []
       
       for (const size of options.sizes) {
         const outputPath = join(outputDir, `${size.name}.${options.format || 'jpeg'}`)
         
-        // 简单复制原文件作为缩略图（实际项目中需要真正的图片处理）
-        await fs.mkdir(outputDir, { recursive: true })
-        await fs.copyFile(inputPath, outputPath)
-        const buffer = await fs.readFile(outputPath)
+        let pipeline = sharp(inputPath)
+          .resize(size.width, size.height, {
+            fit: 'cover',
+            position: 'center',
+          })
+        
+        // 设置格式和质量
+        if (options.format === 'jpeg') {
+          pipeline = pipeline.jpeg({
+            quality: size.quality || 80,
+            progressive: options.progressive,
+          })
+        } else if (options.format === 'png') {
+          pipeline = pipeline.png({
+            quality: size.quality || 80,
+            progressive: options.progressive,
+          })
+        } else if (options.format === 'webp') {
+          pipeline = pipeline.webp({
+            quality: size.quality || 80,
+          })
+        }
+        
+        const buffer = await pipeline.toBuffer()
+        await fs.writeFile(outputPath, buffer)
+        
+        const metadata = await sharp(buffer).metadata()
         
         thumbnails.push({
           name: size.name,
           buffer,
-          width: size.width,
-          height: size.height || size.width,
+          width: metadata.width!,
+          height: metadata.height!,
           size: buffer.length,
         })
         
-        this.logger.log(`缩略图生成完成: ${size.name} (${size.width}x${size.height || size.width})`)
+        this.logger.log(`缩略图生成完成: ${size.name} (${metadata.width}x${metadata.height})`)
       }
       
       return { thumbnails }
@@ -104,21 +146,22 @@ export class ImageProcessingService {
   }
 
   /**
-   * 获取图片信息 (简化版本)
+   * 获取图片信息
    */
   async getImageInfo(imagePath: string): Promise<ImageInfo> {
     try {
+      const metadata = await sharp(imagePath).metadata()
       const stats = await fs.stat(imagePath)
       
       return {
-        width: 800, // 模拟值
-        height: 600, // 模拟值
-        format: 'jpeg',
+        width: metadata.width!,
+        height: metadata.height!,
+        format: metadata.format!,
         size: stats.size,
-        density: 72,
-        hasAlpha: false,
-        channels: 3,
-        colorspace: 'srgb',
+        density: metadata.density,
+        hasAlpha: metadata.hasAlpha,
+        channels: metadata.channels!,
+        colorspace: metadata.space!,
       }
     } catch (error) {
       this.logger.error(`获取图片信息失败: ${imagePath}`, error)
@@ -127,7 +170,7 @@ export class ImageProcessingService {
   }
 
   /**
-   * 压缩图片 (简化版本)
+   * 压缩图片
    */
   async compressImage(
     inputPath: string,
@@ -141,7 +184,7 @@ export class ImageProcessingService {
   }
 
   /**
-   * 调整图片大小 (简化版本)
+   * 调整图片大小
    */
   async resizeImage(
     inputPath: string,
@@ -155,12 +198,12 @@ export class ImageProcessingService {
   }
 
   /**
-   * 转换图片格式 (简化版本)
+   * 转换图片格式
    */
   async convertFormat(
     inputPath: string,
     outputPath: string,
-    format: 'jpeg' | 'png' | 'webp',
+    format: 'jpeg' | 'png' | 'webp' | 'avif',
     quality = 80
   ): Promise<ProcessingResult> {
     return this.processImage(inputPath, outputPath, {
@@ -169,16 +212,15 @@ export class ImageProcessingService {
   }
 
   /**
-   * 验证图片文件 (简化版本)
+   * 验证图片文件
    */
   private async validateImageFile(imagePath: string): Promise<void> {
     try {
       await fs.access(imagePath)
+      const metadata = await sharp(imagePath).metadata()
       
-      // 简单的文件扩展名检查
-      const ext = imagePath.split('.').pop()?.toLowerCase()
-      if (!ext || !this.supportedFormats.includes(ext)) {
-        throw new BadRequestException(`不支持的图片格式: ${ext}`)
+      if (!metadata.format || !this.supportedFormats.includes(metadata.format)) {
+        throw new BadRequestException(`不支持的图片格式: ${metadata.format}`)
       }
     } catch (error) {
       if (error instanceof BadRequestException) {
@@ -186,5 +228,138 @@ export class ImageProcessingService {
       }
       throw new BadRequestException(`无效的图片文件: ${imagePath}`)
     }
+  }
+
+  /**
+   * 应用处理选项
+   */
+  private applyProcessingOptions(pipeline: sharp.Sharp, options: ImageProcessingOptions): sharp.Sharp {
+    // 裁剪
+    if (options.crop) {
+      pipeline = pipeline.extract({
+        left: options.crop.left,
+        top: options.crop.top,
+        width: options.crop.width,
+        height: options.crop.height,
+      })
+    }
+
+    // 旋转
+    if (options.rotate) {
+      pipeline = pipeline.rotate(options.rotate.angle, {
+        background: options.rotate.background || 'white',
+      })
+    }
+
+    // 调整大小
+    if (options.resize) {
+      pipeline = pipeline.resize(options.resize.width, options.resize.height, {
+        fit: options.resize.fit || 'inside',
+        position: options.resize.position,
+        background: options.resize.background,
+        withoutEnlargement: options.resize.withoutEnlargement,
+        withoutReduction: options.resize.withoutReduction,
+      })
+    }
+
+    // 滤镜效果
+    if (options.filter) {
+      pipeline = this.applyFilters(pipeline, options.filter)
+    }
+
+    // 格式转换
+    if (options.format) {
+      pipeline = this.applyFormat(pipeline, options.format)
+    } else if (options.compress) {
+      pipeline = this.applyCompression(pipeline, options.compress)
+    }
+
+    // 移除元数据
+    if (options.stripMetadata) {
+      pipeline = pipeline.withMetadata({})
+    }
+
+    return pipeline
+  }
+
+  /**
+   * 应用滤镜效果
+   */
+  private applyFilters(pipeline: sharp.Sharp, filters: FilterOptions): sharp.Sharp {
+    if (filters.blur) {
+      pipeline = pipeline.blur(filters.blur)
+    }
+
+    if (filters.sharpen) {
+      pipeline = pipeline.sharpen(filters.sharpen)
+    }
+
+    if (filters.brightness !== undefined) {
+      pipeline = pipeline.modulate({ brightness: 1 + filters.brightness })
+    }
+
+    if (filters.saturation !== undefined) {
+      pipeline = pipeline.modulate({ saturation: 1 + filters.saturation })
+    }
+
+    if (filters.hue !== undefined) {
+      pipeline = pipeline.modulate({ hue: filters.hue })
+    }
+
+    if (filters.gamma) {
+      pipeline = pipeline.gamma(filters.gamma)
+    }
+
+    if (filters.negate) {
+      pipeline = pipeline.negate()
+    }
+
+    if (filters.grayscale) {
+      pipeline = pipeline.grayscale()
+    }
+
+    return pipeline
+  }
+
+  /**
+   * 应用格式转换
+   */
+  private applyFormat(pipeline: sharp.Sharp, format: FormatOptions): sharp.Sharp {
+    switch (format.format) {
+      case 'jpeg':
+        return pipeline.jpeg({
+          quality: format.quality || 80,
+          progressive: format.progressive,
+        })
+      case 'png':
+        return pipeline.png({
+          quality: format.quality || 80,
+          progressive: format.progressive,
+        })
+      case 'webp':
+        return pipeline.webp({
+          quality: format.quality || 80,
+          lossless: format.lossless,
+          effort: format.effort || 4,
+        })
+      case 'avif':
+        return pipeline.avif({
+          quality: format.quality || 80,
+          effort: format.effort || 4,
+        })
+      default:
+        return pipeline
+    }
+  }
+
+  /**
+   * 应用压缩
+   */
+  private applyCompression(pipeline: sharp.Sharp, compress: CompressOptions): sharp.Sharp {
+    return pipeline.jpeg({
+      quality: compress.quality || 80,
+      progressive: compress.progressive,
+      mozjpeg: compress.mozjpeg,
+    })
   }
 }

@@ -53,7 +53,20 @@ cp .env.example .env
 # Edit .env with your configuration
 ```
 
-4. Start the development server:
+4. (Optional) Start Redis for caching:
+
+```bash
+# Using Docker (recommended)
+.\scripts\start-redis.ps1
+
+# Test Redis connection
+.\scripts\test-redis.ps1
+
+# Update .env to enable Redis
+# REDIS_HOST=localhost
+```
+
+5. Start the development server:
 
 ```bash
 npm run start:dev
@@ -61,18 +74,53 @@ npm run start:dev
 
 The service will be available at `http://localhost:3001`
 
+### Available Endpoints
+
+- **API Documentation**: http://localhost:3001/api
+- **Health Check**: http://localhost:3001/info
+- **Monitoring Dashboard**: http://localhost:3001/api/monitoring/dashboard
+
 ## Configuration
 
 ### Environment Variables
 
 Key configuration options in `.env`:
 
+**Basic Configuration:**
+
 - `PORT`: Server port (default: 3001)
 - `UPLOAD_DIR`: File storage directory
 - `MAX_FILE_SIZE`: Global file size limit
 - `JWT_SECRET`: JWT signing secret
 - `CORS_ORIGINS`: Allowed CORS origins
-- `STORAGE_PROVIDER`: Storage backend (local, aws, aliyun)
+
+**Redis Cache Configuration:**
+
+- `REDIS_HOST`: Redis server host (default: localhost)
+- `REDIS_PORT`: Redis server port (default: 6379)
+- `REDIS_PASSWORD`: Redis password (optional)
+- `REDIS_DB`: Redis database number (default: 0)
+- `CACHE_TTL`: Cache time-to-live in seconds (default: 3600)
+
+**CDN Configuration:**
+
+- `CDN_PROVIDER`: CDN provider (local, aws, aliyun, tencent)
+- `CDN_BUCKET`: CDN bucket name
+- `CDN_ACCESS_KEY_ID`: CDN access key
+- `CDN_ACCESS_KEY_SECRET`: CDN secret key
+- `CDN_REGION`: CDN region
+
+**Image Processing:**
+
+- `IMAGE_PROCESSING_ENABLED`: Enable image processing (default: true)
+- `IMAGE_QUALITY_DEFAULT`: Default image quality (default: 80)
+- `IMAGE_MAX_SIZE`: Maximum image size (default: 50MB)
+
+**Monitoring:**
+
+- `MONITORING_ACCESS_LOGGING`: Enable access logging (default: true)
+- `MONITORING_PERFORMANCE`: Enable performance monitoring (default: true)
+- `MONITORING_LOG_RETENTION_DAYS`: Log retention period (default: 30)
 
 ### File Type Configuration
 
