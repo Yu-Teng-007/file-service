@@ -62,7 +62,7 @@ import { StorageModule } from './modules/storage/storage.module'
     StorageModule,
     CacheModule,
     CDNModule,
-    ImageProcessingModule,
+    ImageProcessingModule, // 重新启用，使用简化版本
     CompressionModule,
     MonitoringModule,
   ],

@@ -62,10 +62,10 @@ export class MonitoringService {
     try {
       const uploadDir = this.configService.get<string>('UPLOAD_DIR', 'uploads')
       const stats = await this.calculateDirectoryStats(uploadDir)
-      
+
       // 获取系统磁盘信息
       const diskStats = await this.getDiskStats(uploadDir)
-      
+
       return {
         totalFiles: stats.fileCount,
         totalSize: stats.totalSize,
@@ -89,13 +89,12 @@ export class MonitoringService {
       log => now - log.timestamp.getTime() < 60000 // 最近1分钟
     )
 
-    const responseTimes = recentLogs
-      .filter(log => log.responseTime)
-      .map(log => log.responseTime!)
+    const responseTimes = recentLogs.filter(log => log.responseTime).map(log => log.responseTime!)
 
-    const averageResponseTime = responseTimes.length > 0
-      ? responseTimes.reduce((sum, time) => sum + time, 0) / responseTimes.length
-      : 0
+    const averageResponseTime =
+      responseTimes.length > 0
+        ? responseTimes.reduce((sum, time) => sum + time, 0) / responseTimes.length
+        : 0
 
     const requestsPerSecond = recentLogs.length / 60
 
@@ -124,13 +123,16 @@ export class MonitoringService {
    * 获取文件热度统计
    */
   async getFilePopularityStats(limit = 10): Promise<FilePopularityStats[]> {
-    const fileAccessCounts = new Map<string, {
-      count: number
-      downloadCount: number
-      lastAccessed: Date
-      fileName: string
-      category: string
-    }>()
+    const fileAccessCounts = new Map<
+      string,
+      {
+        count: number
+        downloadCount: number
+        lastAccessed: Date
+        fileName: string
+        category: string
+      }
+    >()
 
     // 统计访问次数
     for (const log of this.accessLogs) {
@@ -179,7 +181,7 @@ export class MonitoringService {
     for (const log of this.accessLogs) {
       const date = new Date(log.timestamp)
       const key = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}-${date.getHours()}`
-      
+
       const existing = patterns.get(key) || {
         hour: date.getHours(),
         day: date.getDate(),
@@ -200,20 +202,25 @@ export class MonitoringService {
       patterns.set(key, existing)
     }
 
-    return Array.from(patterns.values())
-      .sort((a, b) => new Date(a.year, a.month, a.day, a.hour).getTime() - 
-                     new Date(b.year, b.month, b.day, b.hour).getTime())
+    return Array.from(patterns.values()).sort(
+      (a, b) =>
+        new Date(a.year, a.month, a.day, a.hour).getTime() -
+        new Date(b.year, b.month, b.day, b.hour).getTime()
+    )
   }
 
   /**
    * 获取错误统计
    */
   async getErrorStats(): Promise<ErrorStats[]> {
-    const errorCounts = new Map<string, {
-      count: number
-      lastOccurred: Date
-      examples: Array<{ message: string; timestamp: Date; context?: any }>
-    }>()
+    const errorCounts = new Map<
+      string,
+      {
+        count: number
+        lastOccurred: Date
+        examples: Array<{ message: string; timestamp: Date; context?: any }>
+      }
+    >()
 
     const errorLogs = this.accessLogs.filter(log => log.errorMessage)
 
@@ -262,11 +269,13 @@ export class MonitoringService {
     )
 
     let status: 'healthy' | 'warning' | 'critical' = 'healthy'
-    
+
     if (services.some(service => service.status === 'down')) {
       status = 'critical'
-    } else if (services.some(service => service.status === 'degraded') || 
-               recentAlerts.some(alert => alert.severity === 'high' || alert.severity === 'critical')) {
+    } else if (
+      services.some(service => service.status === 'degraded') ||
+      recentAlerts.some(alert => alert.severity === 'high' || alert.severity === 'critical')
+    ) {
       status = 'warning'
     }
 
@@ -275,7 +284,12 @@ export class MonitoringService {
       uptime,
       lastCheck: new Date(),
       services,
-      alerts: recentAlerts,
+      alerts: recentAlerts.map(alert => ({
+        level: alert.severity as 'info' | 'warning' | 'error' | 'critical',
+        message: alert.message,
+        timestamp: alert.timestamp,
+        resolved: alert.resolved,
+      })),
     }
   }
 
@@ -380,9 +394,7 @@ export class MonitoringService {
     const cutoffTime = Date.now() - retentionTime
 
     // 清理访问日志
-    this.accessLogs = this.accessLogs.filter(
-      log => log.timestamp.getTime() > cutoffTime
-    )
+    this.accessLogs = this.accessLogs.filter(log => log.timestamp.getTime() > cutoffTime)
 
     // 清理已解决的告警
     this.alerts = this.alerts.filter(
@@ -408,15 +420,15 @@ export class MonitoringService {
 
     try {
       const entries = await fs.readdir(dirPath, { withFileTypes: true })
-      
+
       for (const entry of entries) {
         const fullPath = join(dirPath, entry.name)
-        
+
         if (entry.isDirectory()) {
           const subStats = await this.calculateDirectoryStats(fullPath)
           stats.fileCount += subStats.fileCount
           stats.totalSize += subStats.totalSize
-          
+
           // 合并分类统计
           for (const [category, categoryStats] of Object.entries(subStats.categoryBreakdown)) {
             if (!stats.categoryBreakdown[category]) {
@@ -429,7 +441,7 @@ export class MonitoringService {
           const fileStat = await fs.stat(fullPath)
           stats.fileCount++
           stats.totalSize += fileStat.size
-          
+
           // 根据目录名确定分类
           const category = dirPath.split('/').pop() || 'unknown'
           if (!stats.categoryBreakdown[category]) {
@@ -445,7 +457,7 @@ export class MonitoringService {
 
     // 计算百分比
     for (const category of Object.keys(stats.categoryBreakdown)) {
-      stats.categoryBreakdown[category].percentage = 
+      stats.categoryBreakdown[category].percentage =
         stats.totalSize > 0 ? (stats.categoryBreakdown[category].size / stats.totalSize) * 100 : 0
     }
 
@@ -455,7 +467,9 @@ export class MonitoringService {
   /**
    * 获取磁盘统计信息
    */
-  private async getDiskStats(path: string): Promise<{ total: number; used: number; available: number }> {
+  private async getDiskStats(
+    path: string
+  ): Promise<{ total: number; used: number; available: number }> {
     try {
       const stats = await fs.statfs(path)
       const total = stats.blocks * stats.bsize
@@ -486,9 +500,9 @@ export class MonitoringService {
    * 获取CPU使用率
    */
   private async getCpuUsage(): Promise<number> {
-    return new Promise((resolve) => {
+    return new Promise(resolve => {
       const startUsage = process.cpuUsage()
-      
+
       setTimeout(() => {
         const endUsage = process.cpuUsage(startUsage)
         const totalUsage = endUsage.user + endUsage.system
@@ -501,13 +515,15 @@ export class MonitoringService {
   /**
    * 检查服务状态
    */
-  private async checkServices(): Promise<Array<{
-    name: string
-    status: 'up' | 'down' | 'degraded'
-    responseTime?: number
-    lastCheck: Date
-    errorMessage?: string
-  }>> {
+  private async checkServices(): Promise<
+    Array<{
+      name: string
+      status: 'up' | 'down' | 'degraded'
+      responseTime?: number
+      lastCheck: Date
+      errorMessage?: string
+    }>
+  > {
     const services = [
       { name: 'File Service', check: () => Promise.resolve(true) },
       { name: 'Cache Service', check: () => this.checkCacheService() },
@@ -515,13 +531,13 @@ export class MonitoringService {
     ]
 
     const results = []
-    
+
     for (const service of services) {
       const startTime = Date.now()
       try {
         const isUp = await service.check()
         const responseTime = Date.now() - startTime
-        
+
         results.push({
           name: service.name,
           status: isUp ? (responseTime > 5000 ? 'degraded' : 'up') : 'down',
@@ -637,9 +653,7 @@ export class MonitoringService {
    */
   private async createAlert(rule: AlertRule, value: number): Promise<void> {
     // 检查是否已有未解决的相同告警
-    const existingAlert = this.alerts.find(
-      alert => alert.ruleId === rule.id && !alert.resolved
-    )
+    const existingAlert = this.alerts.find(alert => alert.ruleId === rule.id && !alert.resolved)
 
     if (existingAlert) {
       return // 避免重复告警
@@ -737,8 +751,14 @@ export class MonitoringService {
       logRetentionDays: this.configService.get<number>('MONITORING_LOG_RETENTION_DAYS', 30),
       metricsRetentionDays: this.configService.get<number>('MONITORING_METRICS_RETENTION_DAYS', 90),
       alertCheckInterval: this.configService.get<number>('MONITORING_ALERT_CHECK_INTERVAL', 60),
-      performanceCheckInterval: this.configService.get<number>('MONITORING_PERFORMANCE_CHECK_INTERVAL', 30),
-      storageCheckInterval: this.configService.get<number>('MONITORING_STORAGE_CHECK_INTERVAL', 300),
+      performanceCheckInterval: this.configService.get<number>(
+        'MONITORING_PERFORMANCE_CHECK_INTERVAL',
+        30
+      ),
+      storageCheckInterval: this.configService.get<number>(
+        'MONITORING_STORAGE_CHECK_INTERVAL',
+        300
+      ),
     }
   }
 }
