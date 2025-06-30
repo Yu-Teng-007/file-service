@@ -4,7 +4,7 @@ import { Injectable } from '@nestjs/common'
 export class AppService {
   getHealth() {
     return {
-      message: 'File Service is running!',
+      message: '文件服务正在运行！',
       version: '1.0.0',
       timestamp: new Date().toISOString(),
       uptime: process.uptime(),
@@ -13,17 +13,17 @@ export class AppService {
 
   getInfo() {
     return {
-      name: 'File Service',
+      name: '文件服务',
       version: '1.0.0',
-      description: 'Independent file service for static resource storage and management',
+      description: '用于静态资源存储和管理的独立文件服务',
       features: [
-        'Multi-format Support',
-        'Security & Validation',
-        'Access Control',
-        'Auto Classification',
-        'Performance Optimization',
-        'Management APIs',
-        'Docker Ready',
+        '多格式支持',
+        '安全验证',
+        '访问控制',
+        '自动分类',
+        '性能优化',
+        '管理接口',
+        'Docker 支持',
       ],
       supportedFormats: {
         images: ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'],

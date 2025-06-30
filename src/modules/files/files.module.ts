@@ -35,49 +35,49 @@ import { CDNModule } from '../cdn/cdn.module'
           },
         }),
         limits: {
-          fileSize: parseInt(configService.get<string>('MAX_FILE_SIZE') || '104857600'), // 100MB default
-          files: 10, // Maximum 10 files per request
+          fileSize: parseInt(configService.get<string>('MAX_FILE_SIZE') || '104857600'), // 默认100MB
+          files: 10, // 每次请求最多10个文件
         },
         fileFilter: (req, file, cb) => {
-          // Basic file filter - detailed validation in service
+          // 基础文件过滤器 - 详细验证在服务中进行
           const allowedMimes = [
-            // Images
+            // 图片
             'image/jpeg',
             'image/png',
             'image/gif',
             'image/webp',
             'image/svg+xml',
-            // Scripts
+            // 脚本
             'application/javascript',
             'text/javascript',
             'application/typescript',
             'application/json',
-            // Styles
+            // 样式
             'text/css',
             'text/scss',
             'text/less',
-            // Fonts
+            // 字体
             'font/ttf',
             'font/woff',
             'font/woff2',
             'application/vnd.ms-fontobject',
-            // Documents
+            // 文档
             'application/pdf',
             'text/plain',
             'application/msword',
             'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-            // Music
+            // 音乐
             'audio/mpeg',
             'audio/mp3',
             'audio/wav',
             'audio/flac',
             'audio/ogg',
-            // Videos
+            // 视频
             'video/mp4',
             'video/avi',
             'video/mov',
             'video/wmv',
-            // Archives
+            // 压缩包
             'application/zip',
             'application/x-rar-compressed',
             'application/x-7z-compressed',

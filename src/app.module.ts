@@ -18,13 +18,13 @@ import { StorageModule } from './modules/storage/storage.module'
 
 @Module({
   imports: [
-    // Configuration module
+    // 配置模块
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: '.env',
     }),
 
-    // Rate limiting
+    // 速率限制
     ThrottlerModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => [
@@ -36,7 +36,7 @@ import { StorageModule } from './modules/storage/storage.module'
       inject: [ConfigService],
     }),
 
-    // Static file serving
+    // 静态文件服务
     ServeStaticModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => [
@@ -44,7 +44,7 @@ import { StorageModule } from './modules/storage/storage.module'
           rootPath: join(process.cwd(), configService.get('UPLOAD_DIR') || 'uploads'),
           serveRoot: '/uploads',
           serveStaticOptions: {
-            maxAge: '1d', // Cache for 1 day
+            maxAge: '1d', // 缓存1天
             etag: true,
             lastModified: true,
           },
@@ -53,10 +53,10 @@ import { StorageModule } from './modules/storage/storage.module'
       inject: [ConfigService],
     }),
 
-    // Scheduling for background tasks
+    // 后台任务调度
     ScheduleModule.forRoot(),
 
-    // Feature modules
+    // 功能模块
     FilesModule,
     AuthModule,
     StorageModule,

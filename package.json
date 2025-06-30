@@ -1,7 +1,7 @@
 {
   "name": "file-service",
   "version": "1.0.0",
-  "description": "Independent file service for static resource storage and management",
+  "description": "用于静态资源存储和管理的独立文件服务",
   "main": "dist/main.js",
   "scripts": {
     "build": "nest build",
