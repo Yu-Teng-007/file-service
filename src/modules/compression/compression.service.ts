@@ -35,7 +35,7 @@ export class CompressionService {
   ): Promise<CompressionResult> {
     try {
       this.logger.log(`开始压缩文件: ${inputPath}`)
-      
+
       const inputStats = await fs.stat(inputPath)
       const originalSize = inputStats.size
 
@@ -44,13 +44,9 @@ export class CompressionService {
 
       // 创建压缩流
       const compressor = this.createCompressor(options)
-      
+
       // 执行压缩
-      await pipeline(
-        createReadStream(inputPath),
-        compressor,
-        createWriteStream(outputPath)
-      )
+      await pipeline(createReadStream(inputPath), compressor, createWriteStream(outputPath))
 
       const outputStats = await fs.stat(outputPath)
       const compressedSize = outputStats.size
@@ -85,7 +81,7 @@ export class CompressionService {
   ): Promise<CompressionResult> {
     try {
       this.logger.log(`开始解压缩文件: ${inputPath}`)
-      
+
       const inputStats = await fs.stat(inputPath)
       const compressedSize = inputStats.size
 
@@ -94,13 +90,9 @@ export class CompressionService {
 
       // 创建解压缩流
       const decompressor = this.createDecompressor(method)
-      
+
       // 执行解压缩
-      await pipeline(
-        createReadStream(inputPath),
-        decompressor,
-        createWriteStream(outputPath)
-      )
+      await pipeline(createReadStream(inputPath), decompressor, createWriteStream(outputPath))
 
       const outputStats = await fs.stat(outputPath)
       const originalSize = outputStats.size
@@ -135,7 +127,7 @@ export class CompressionService {
   ): Promise<ArchiveResult> {
     try {
       this.logger.log(`开始创建归档: ${outputPath}`)
-      
+
       // 确保输出目录存在
       await fs.mkdir(dirname(outputPath), { recursive: true })
 
@@ -197,7 +189,7 @@ export class CompressionService {
   ): Promise<ExtractionResult> {
     try {
       this.logger.log(`开始提取归档: ${archivePath}`)
-      
+
       // 确保目标目录存在
       await fs.mkdir(options.destination, { recursive: true })
 
@@ -361,18 +353,21 @@ export class CompressionService {
 
       createReadStream(archivePath)
         .pipe(unzipper.Parse())
-        .on('entry', (entry) => {
+        .on('entry', entry => {
           const fileName = entry.path
           const type = entry.type
           const size = entry.vars.uncompressedSize
 
           // 应用过滤器
-          if (options.filter && !options.filter({
-            name: fileName,
-            path: fileName,
-            isDirectory: type === 'Directory',
-            size,
-          })) {
+          if (
+            options.filter &&
+            !options.filter({
+              name: fileName,
+              path: fileName,
+              isDirectory: type === 'Directory',
+              size,
+            })
+          ) {
             entry.autodrain()
             return
           }
@@ -440,7 +435,7 @@ export class CompressionService {
 
       createReadStream(archivePath)
         .pipe(unzipper.Parse())
-        .on('entry', (entry) => {
+        .on('entry', entry => {
           const fileName = entry.path
           const type = entry.type
           const size = entry.vars.uncompressedSize
@@ -485,7 +480,7 @@ export class CompressionService {
    */
   private detectArchiveFormat(archivePath: string): string {
     const ext = extname(archivePath).toLowerCase()
-    
+
     switch (ext) {
       case '.zip':
         return 'zip'

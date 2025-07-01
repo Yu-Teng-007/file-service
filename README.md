@@ -92,6 +92,7 @@ npm run start:dev
 - `UPLOAD_DIR`: 文件存储目录
 - `MAX_FILE_SIZE`: 全局文件大小限制
 - `JWT_SECRET`: JWT 签名密钥
+- `API_KEY`: API 访问密钥（用于保护敏感操作）
 - `CORS_ORIGINS`: 允许的 CORS 来源
 
 **Redis 缓存配置：**
@@ -166,6 +167,29 @@ npm run start:dev
 - `GET /api/monitoring/storage/stats` - 存储统计
 - `GET /api/monitoring/performance/metrics` - 性能指标
 - `GET /api/monitoring/dashboard` - 监控面板
+
+## API Key 身份验证
+
+某些敏感操作需要提供 API Key 进行身份验证：
+
+### 受保护的端点
+
+- `POST /api/files/upload` - 文件上传
+- `POST /api/files/upload/multiple` - 批量上传
+- `DELETE /api/files/:id` - 删除文件
+- `POST /api/files/batch` - 批量操作
+
+### 使用方法
+
+在请求头中包含 `X-API-Key`：
+
+```bash
+curl -H "X-API-Key: your-api-key" \
+     -F "file=@example.jpg" \
+     http://localhost:3001/api/files/upload
+```
+
+详细说明请参考：[API Key 身份验证指南](docs/api-key-authentication.md)
 
 ## 开发
 

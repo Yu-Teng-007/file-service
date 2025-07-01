@@ -32,27 +32,27 @@ export class ImageProcessingService {
   ): Promise<ProcessingResult> {
     try {
       this.logger.log(`开始处理图片: ${inputPath}`)
-      
+
       // 验证输入文件
       await this.validateImageFile(inputPath)
-      
+
       // 获取原始图片信息
       const originalSize = (await fs.stat(inputPath)).size
-      
+
       // 创建Sharp实例
       let pipeline = sharp(inputPath)
-      
+
       // 应用各种处理选项
       pipeline = this.applyProcessingOptions(pipeline, options)
-      
+
       // 处理并保存
       const buffer = await pipeline.toBuffer()
       await fs.writeFile(outputPath, buffer)
-      
+
       // 获取处理后的图片信息
       const processedInfo = await sharp(buffer).metadata()
       const processedSize = buffer.length
-      
+
       const result: ProcessingResult = {
         buffer,
         info: {
@@ -69,10 +69,10 @@ export class ImageProcessingService {
         processedSize,
         compressionRatio: originalSize > 0 ? (originalSize - processedSize) / originalSize : 0,
       }
-      
+
       this.logger.log(`图片处理完成: ${inputPath} -> ${outputPath}`)
       this.logger.log(`压缩比: ${(result.compressionRatio * 100).toFixed(2)}%`)
-      
+
       return result
     } catch (error) {
       this.logger.error(`图片处理失败: ${inputPath}`, error)
@@ -90,21 +90,20 @@ export class ImageProcessingService {
   ): Promise<ThumbnailResult> {
     try {
       this.logger.log(`开始生成缩略图: ${inputPath}`)
-      
+
       await this.validateImageFile(inputPath)
       await fs.mkdir(outputDir, { recursive: true })
-      
+
       const thumbnails: ThumbnailResult['thumbnails'] = []
-      
+
       for (const size of options.sizes) {
         const outputPath = join(outputDir, `${size.name}.${options.format || 'jpeg'}`)
-        
-        let pipeline = sharp(inputPath)
-          .resize(size.width, size.height, {
-            fit: 'cover',
-            position: 'center',
-          })
-        
+
+        let pipeline = sharp(inputPath).resize(size.width, size.height, {
+          fit: 'cover',
+          position: 'center',
+        })
+
         // 设置格式和质量
         if (options.format === 'jpeg') {
           pipeline = pipeline.jpeg({
@@ -121,12 +120,12 @@ export class ImageProcessingService {
             quality: size.quality || 80,
           })
         }
-        
+
         const buffer = await pipeline.toBuffer()
         await fs.writeFile(outputPath, buffer)
-        
+
         const metadata = await sharp(buffer).metadata()
-        
+
         thumbnails.push({
           name: size.name,
           buffer,
@@ -134,10 +133,10 @@ export class ImageProcessingService {
           height: metadata.height!,
           size: buffer.length,
         })
-        
+
         this.logger.log(`缩略图生成完成: ${size.name} (${metadata.width}x${metadata.height})`)
       }
-      
+
       return { thumbnails }
     } catch (error) {
       this.logger.error(`缩略图生成失败: ${inputPath}`, error)
@@ -152,7 +151,7 @@ export class ImageProcessingService {
     try {
       const metadata = await sharp(imagePath).metadata()
       const stats = await fs.stat(imagePath)
-      
+
       return {
         width: metadata.width!,
         height: metadata.height!,
@@ -218,7 +217,7 @@ export class ImageProcessingService {
     try {
       await fs.access(imagePath)
       const metadata = await sharp(imagePath).metadata()
-      
+
       if (!metadata.format || !this.supportedFormats.includes(metadata.format)) {
         throw new BadRequestException(`不支持的图片格式: ${metadata.format}`)
       }
@@ -233,7 +232,10 @@ export class ImageProcessingService {
   /**
    * 应用处理选项
    */
-  private applyProcessingOptions(pipeline: sharp.Sharp, options: ImageProcessingOptions): sharp.Sharp {
+  private applyProcessingOptions(
+    pipeline: sharp.Sharp,
+    options: ImageProcessingOptions
+  ): sharp.Sharp {
     // 裁剪
     if (options.crop) {
       pipeline = pipeline.extract({

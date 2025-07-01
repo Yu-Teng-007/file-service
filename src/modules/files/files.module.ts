@@ -12,6 +12,7 @@ import { FileStorageService } from './file-storage.service'
 import { StorageModule } from '../storage/storage.module'
 import { CacheModule } from '../cache/cache.module'
 import { CDNModule } from '../cdn/cdn.module'
+import { AuthModule } from '../auth/auth.module'
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { CDNModule } from '../cdn/cdn.module'
     StorageModule,
     CacheModule,
     CDNModule,
+    AuthModule,
     MulterModule.registerAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({

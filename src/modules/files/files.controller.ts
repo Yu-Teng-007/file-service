@@ -17,6 +17,7 @@ import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express'
 import { Cacheable, CacheEvict } from '../cache/decorators/cache.decorator'
 import { CacheInterceptor } from '../cache/interceptors/cache.interceptor'
 import { CacheEvictInterceptor } from '../cache/interceptors/cache-evict.interceptor'
+import { ApiKeyAuth } from '../auth/decorators/api-key-auth.decorator'
 import {
   ApiTags,
   ApiOperation,
@@ -45,6 +46,7 @@ export class FilesController {
   constructor(private readonly filesService: FilesService) {}
 
   @Post('upload')
+  @ApiKeyAuth()
   @UseInterceptors(FileInterceptor('file'))
   @ApiOperation({ summary: '上传单个文件', description: '上传单个文件到服务器' })
   @ApiConsumes('multipart/form-data')
@@ -115,6 +117,7 @@ export class FilesController {
   }
 
   @Post('upload/multiple')
+  @ApiKeyAuth()
   @UseInterceptors(FilesInterceptor('files', 10))
   @ApiOperation({ summary: '上传多个文件', description: '批量上传多个文件到服务器' })
   @ApiConsumes('multipart/form-data')
@@ -255,6 +258,7 @@ export class FilesController {
   }
 
   @Delete(':id')
+  @ApiKeyAuth()
   @UseInterceptors(CacheEvictInterceptor)
   @CacheEvict(['file:${id}', 'tag:file-metadata', 'tag:file-list'])
   @ApiOperation({ summary: '删除文件', description: '根据文件ID删除文件' })
@@ -274,6 +278,7 @@ export class FilesController {
   }
 
   @Post('batch')
+  @ApiKeyAuth()
   @ApiOperation({ summary: '批量操作文件', description: '对多个文件执行批量操作' })
   @ApiResponse({
     status: HttpStatus.OK,
