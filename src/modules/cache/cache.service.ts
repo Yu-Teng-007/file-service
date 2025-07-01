@@ -203,4 +203,52 @@ export class CacheService {
   private getTagKey(tag: string): string {
     return `tag:${tag}`
   }
+
+  /**
+   * 健康检查
+   */
+  async healthCheck(): Promise<{
+    status: 'healthy' | 'unhealthy'
+    latency?: number
+    timestamp: Date
+    error?: string
+  }> {
+    const startTime = Date.now()
+
+    try {
+      const testKey = 'health-check-test'
+      const testValue = 'test-value'
+
+      // 测试写入
+      await this.cacheManager.set(testKey, testValue, 1)
+
+      // 测试读取
+      const retrievedValue = await this.cacheManager.get(testKey)
+
+      // 测试删除
+      await this.cacheManager.del(testKey)
+
+      const latency = Date.now() - startTime
+
+      if (retrievedValue === testValue) {
+        return {
+          status: 'healthy',
+          latency,
+          timestamp: new Date(),
+        }
+      } else {
+        return {
+          status: 'unhealthy',
+          timestamp: new Date(),
+          error: 'Cache value mismatch',
+        }
+      }
+    } catch (error) {
+      return {
+        status: 'unhealthy',
+        timestamp: new Date(),
+        error: error.message,
+      }
+    }
+  }
 }

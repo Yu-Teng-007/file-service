@@ -41,14 +41,17 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     const request = ctx.getRequest<Request>()
 
     const errorResponse = this.buildErrorResponse(exception, request)
-    
+
     // 记录错误日志
     this.logError(exception, request, errorResponse)
-    
+
     // 记录错误监控
     this.recordErrorMetrics(exception, request)
 
-    response.status(errorResponse.error.code === 'INTERNAL_SERVER_ERROR' ? 500 : this.getHttpStatus(exception))
+    response
+      .status(
+        errorResponse.error.code === 'INTERNAL_SERVER_ERROR' ? 500 : this.getHttpStatus(exception)
+      )
       .json(errorResponse)
   }
 
@@ -75,7 +78,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
   ): ErrorResponse {
     const status = exception.getStatus()
     const exceptionResponse = exception.getResponse()
-    
+
     let message: string
     let details: any
     let code: string
@@ -183,7 +186,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
 
   private categorizeError(error: Error): string {
     const message = error.message.toLowerCase()
-    
+
     if (message.includes('enoent') || message.includes('file not found')) {
       return 'FILE_NOT_FOUND'
     }
@@ -205,7 +208,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     if (message.includes('duplicate') || message.includes('unique')) {
       return 'DUPLICATE_ERROR'
     }
-    
+
     return 'INTERNAL_SERVER_ERROR'
   }
 
@@ -249,10 +252,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
           JSON.stringify(logContext)
         )
       } else if (status >= 400) {
-        this.logger.warn(
-          `HTTP ${status} - ${error.message}`,
-          JSON.stringify(logContext)
-        )
+        this.logger.warn(`HTTP ${status} - ${error.message}`, JSON.stringify(logContext))
       }
     } else {
       this.logger.error(
@@ -265,21 +265,26 @@ export class GlobalExceptionFilter implements ExceptionFilter {
 
   private recordErrorMetrics(exception: unknown, request: Request): void {
     try {
-      const errorType = exception instanceof HttpException 
-        ? this.getErrorCode(exception.getStatus())
-        : this.categorizeError(exception as Error)
+      const errorType =
+        exception instanceof HttpException
+          ? this.getErrorCode(exception.getStatus())
+          : this.categorizeError(exception as Error)
 
       // 异步记录错误统计，不阻塞响应
       setImmediate(() => {
-        this.monitoringService.logFileAccess({
-          fileName: request.path,
-          accessType: 'error',
-          userAgent: request.headers['user-agent'] || 'unknown',
-          ipAddress: request.ip || 'unknown',
-          errorMessage: exception instanceof Error ? exception.message : 'Unknown error',
-        }).catch(err => {
-          this.logger.warn('Failed to record error metrics', err)
-        })
+        this.monitoringService
+          .logFileAccess({
+            fileId: 'error',
+            fileName: request.path,
+            filePath: request.path,
+            accessType: 'read',
+            userAgent: request.headers['user-agent'] || 'unknown',
+            ipAddress: request.ip || 'unknown',
+            errorMessage: exception instanceof Error ? exception.message : 'Unknown error',
+          })
+          .catch(err => {
+            this.logger.warn('Failed to record error metrics', err)
+          })
       })
     } catch (error) {
       // 忽略监控记录错误，避免循环错误
@@ -294,7 +299,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
 
     const sanitized = { ...body }
     const sensitiveFields = ['password', 'token', 'secret', 'key', 'authorization']
-    
+
     for (const field of sensitiveFields) {
       if (sanitized[field]) {
         sanitized[field] = '[HIDDEN]'

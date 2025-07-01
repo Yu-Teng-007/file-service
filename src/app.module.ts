@@ -17,6 +17,7 @@ import { MonitoringModule } from './modules/monitoring/monitoring.module'
 import { AuthModule } from './modules/auth/auth.module'
 import { StorageModule } from './modules/storage/storage.module'
 import { SecurityModule } from './modules/security/security.module'
+import { PerformanceModule } from './modules/performance/performance.module'
 import configuration, { validateConfig } from './config/configuration'
 
 // 错误处理相关导入
@@ -26,6 +27,9 @@ import { ErrorRecoveryService } from './common/services/error-recovery.service'
 
 // 安全相关导入
 import { SecurityMiddleware } from './modules/security/security.middleware'
+
+// 性能监控相关导入
+import { PerformanceMiddleware } from './modules/performance/performance.middleware'
 
 @Module({
   imports: [
@@ -83,6 +87,7 @@ import { SecurityMiddleware } from './modules/security/security.middleware'
     CompressionModule,
     MonitoringModule,
     SecurityModule,
+    PerformanceModule,
   ],
   controllers: [AppController],
   providers: [
@@ -96,6 +101,8 @@ import { SecurityMiddleware } from './modules/security/security.middleware'
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
-    consumer.apply(SecurityMiddleware, ErrorHandlingMiddleware).forRoutes('*')
+    consumer
+      .apply(PerformanceMiddleware, SecurityMiddleware, ErrorHandlingMiddleware)
+      .forRoutes('*')
   }
 }

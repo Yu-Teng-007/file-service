@@ -2,10 +2,10 @@ import { Injectable, Logger } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { promises as fs } from 'fs'
 import * as crypto from 'crypto'
-import { 
-  UnsupportedFileTypeException, 
+import {
+  UnsupportedFileTypeException,
   FileValidationException,
-  InsufficientPermissionException 
+  InsufficientPermissionException,
 } from '../../common/exceptions/custom.exceptions'
 
 export interface SecurityScanResult {
@@ -25,9 +25,9 @@ export interface VirusScanResult {
 @Injectable()
 export class SecurityService {
   private readonly logger = new Logger(SecurityService.name)
-  private readonly maliciousPatterns: RegExp[]
-  private readonly suspiciousExtensions: Set<string>
-  private readonly blacklistedHashes: Set<string>
+  private maliciousPatterns: RegExp[]
+  private suspiciousExtensions: Set<string>
+  private blacklistedHashes: Set<string>
 
   constructor(private readonly configService: ConfigService) {
     this.initializeSecurityPatterns()
@@ -53,7 +53,7 @@ export class SecurityService {
       /location\.href/gi,
       /location\.replace/gi,
       /location\.assign/gi,
-      
+
       // PHP 恶意模式
       /\<\?php/gi,
       /eval\s*\(/gi,
@@ -69,7 +69,7 @@ export class SecurityService {
       /require\s*\(/gi,
       /include_once\s*\(/gi,
       /require_once\s*\(/gi,
-      
+
       // SQL 注入模式
       /union\s+select/gi,
       /drop\s+table/gi,
@@ -78,7 +78,7 @@ export class SecurityService {
       /update\s+set/gi,
       /alter\s+table/gi,
       /create\s+table/gi,
-      
+
       // 通用恶意模式
       /base64_decode/gi,
       /gzinflate/gi,
@@ -91,7 +91,7 @@ export class SecurityService {
       /\$_SERVER\[/gi,
       /\$_FILES\[/gi,
       /\$_ENV\[/gi,
-      
+
       // 脚本注入模式
       /<script[^>]*>/gi,
       /<\/script>/gi,
@@ -103,7 +103,7 @@ export class SecurityService {
       /<\/embed>/gi,
       /<form[^>]*>/gi,
       /<\/form>/gi,
-      
+
       // 可疑字符串
       /javascript:/gi,
       /vbscript:/gi,
@@ -113,11 +113,41 @@ export class SecurityService {
 
     // 可疑文件扩展名
     this.suspiciousExtensions = new Set([
-      '.exe', '.bat', '.cmd', '.com', '.pif', '.scr', '.vbs', '.vbe',
-      '.js', '.jse', '.jar', '.class', '.php', '.asp', '.aspx', '.jsp',
-      '.pl', '.py', '.rb', '.sh', '.ps1', '.psm1', '.psd1',
-      '.msi', '.msp', '.mst', '.reg', '.hta', '.chm', '.hlp',
-      '.url', '.lnk', '.scf', '.inf', '.ini'
+      '.exe',
+      '.bat',
+      '.cmd',
+      '.com',
+      '.pif',
+      '.scr',
+      '.vbs',
+      '.vbe',
+      '.js',
+      '.jse',
+      '.jar',
+      '.class',
+      '.php',
+      '.asp',
+      '.aspx',
+      '.jsp',
+      '.pl',
+      '.py',
+      '.rb',
+      '.sh',
+      '.ps1',
+      '.psm1',
+      '.psd1',
+      '.msi',
+      '.msp',
+      '.mst',
+      '.reg',
+      '.hta',
+      '.chm',
+      '.hlp',
+      '.url',
+      '.lnk',
+      '.scf',
+      '.inf',
+      '.ini',
     ])
 
     // 已知恶意文件哈希（示例）
@@ -173,9 +203,10 @@ export class SecurityService {
         },
       }
 
-      this.logger.debug(`安全扫描完成: ${originalName}, 威胁数量: ${threats.length}, 风险级别: ${riskLevel}`)
+      this.logger.debug(
+        `安全扫描完成: ${originalName}, 威胁数量: ${threats.length}, 风险级别: ${riskLevel}`
+      )
       return result
-
     } catch (error) {
       this.logger.error(`安全扫描失败: ${originalName}`, error)
       return {
@@ -249,12 +280,25 @@ export class SecurityService {
 
       // 检查可疑字符串
       const suspiciousStrings = [
-        'eval(', 'exec(', 'system(', 'shell_exec(',
-        'base64_decode', 'gzinflate', 'str_rot13',
-        'document.write', 'innerHTML=', 'outerHTML=',
-        'window.location', 'location.href',
-        '<script', '</script>', '<iframe', '</iframe>',
-        'javascript:', 'vbscript:', 'data:text/html'
+        'eval(',
+        'exec(',
+        'system(',
+        'shell_exec(',
+        'base64_decode',
+        'gzinflate',
+        'str_rot13',
+        'document.write',
+        'innerHTML=',
+        'outerHTML=',
+        'window.location',
+        'location.href',
+        '<script',
+        '</script>',
+        '<iframe',
+        '</iframe>',
+        'javascript:',
+        'vbscript:',
+        'data:text/html',
       ]
 
       for (const suspicious of suspiciousStrings) {
@@ -267,7 +311,6 @@ export class SecurityService {
       if (this.containsEncodedContent(content)) {
         threats.push('文件包含可疑的编码内容')
       }
-
     } catch (error) {
       this.logger.warn(`无法读取文件内容: ${filePath}`, error)
     }
@@ -290,7 +333,7 @@ export class SecurityService {
       const expectedSignatures = this.getExpectedFileSignatures(ext)
 
       if (expectedSignatures.length > 0) {
-        const matchesSignature = expectedSignatures.some(signature => 
+        const matchesSignature = expectedSignatures.some(signature =>
           header.slice(0, signature.length).equals(signature)
         )
 
@@ -300,14 +343,15 @@ export class SecurityService {
       }
 
       // 检查可执行文件头部
-      if (header.slice(0, 2).equals(Buffer.from([0x4D, 0x5A]))) { // MZ header
+      if (header.slice(0, 2).equals(Buffer.from([0x4d, 0x5a]))) {
+        // MZ header
         threats.push('检测到可执行文件头部 (PE)')
       }
 
-      if (header.slice(0, 4).equals(Buffer.from([0x7F, 0x45, 0x4C, 0x46]))) { // ELF header
+      if (header.slice(0, 4).equals(Buffer.from([0x7f, 0x45, 0x4c, 0x46]))) {
+        // ELF header
         threats.push('检测到可执行文件头部 (ELF)')
       }
-
     } catch (error) {
       this.logger.warn(`无法读取文件头部: ${filePath}`, error)
     }
@@ -321,7 +365,7 @@ export class SecurityService {
   private async performVirusScan(filePath: string): Promise<VirusScanResult> {
     // 这里应该集成实际的病毒扫描引擎
     // 例如 ClamAV、VirusTotal API 等
-    
+
     const apiKey = this.configService.get<string>('security.virusScanApiKey')
     if (!apiKey) {
       this.logger.warn('病毒扫描API密钥未配置')
@@ -381,7 +425,7 @@ export class SecurityService {
     // 检查Base64编码
     const base64Pattern = /[A-Za-z0-9+\/]{20,}={0,2}/g
     const base64Matches = content.match(base64Pattern)
-    
+
     if (base64Matches && base64Matches.length > 5) {
       return true
     }
@@ -389,7 +433,7 @@ export class SecurityService {
     // 检查十六进制编码
     const hexPattern = /\\x[0-9a-fA-F]{2}/g
     const hexMatches = content.match(hexPattern)
-    
+
     if (hexMatches && hexMatches.length > 10) {
       return true
     }
@@ -397,7 +441,7 @@ export class SecurityService {
     // 检查Unicode编码
     const unicodePattern = /\\u[0-9a-fA-F]{4}/g
     const unicodeMatches = content.match(unicodePattern)
-    
+
     if (unicodeMatches && unicodeMatches.length > 5) {
       return true
     }
@@ -410,13 +454,13 @@ export class SecurityService {
    */
   private getExpectedFileSignatures(extension: string): Buffer[] {
     const signatures: Record<string, Buffer[]> = {
-      'jpg': [Buffer.from([0xFF, 0xD8, 0xFF])],
-      'jpeg': [Buffer.from([0xFF, 0xD8, 0xFF])],
-      'png': [Buffer.from([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A])],
-      'gif': [Buffer.from([0x47, 0x49, 0x46, 0x38])],
-      'pdf': [Buffer.from([0x25, 0x50, 0x44, 0x46])],
-      'zip': [Buffer.from([0x50, 0x4B, 0x03, 0x04])],
-      'rar': [Buffer.from([0x52, 0x61, 0x72, 0x21, 0x1A, 0x07])],
+      jpg: [Buffer.from([0xff, 0xd8, 0xff])],
+      jpeg: [Buffer.from([0xff, 0xd8, 0xff])],
+      png: [Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])],
+      gif: [Buffer.from([0x47, 0x49, 0x46, 0x38])],
+      pdf: [Buffer.from([0x25, 0x50, 0x44, 0x46])],
+      zip: [Buffer.from([0x50, 0x4b, 0x03, 0x04])],
+      rar: [Buffer.from([0x52, 0x61, 0x72, 0x21, 0x1a, 0x07])],
     }
 
     return signatures[extension] || []
