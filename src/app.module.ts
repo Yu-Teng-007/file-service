@@ -16,12 +16,16 @@ import { CompressionModule } from './modules/compression/compression.module'
 import { MonitoringModule } from './modules/monitoring/monitoring.module'
 import { AuthModule } from './modules/auth/auth.module'
 import { StorageModule } from './modules/storage/storage.module'
+import { SecurityModule } from './modules/security/security.module'
 import configuration, { validateConfig } from './config/configuration'
 
 // 错误处理相关导入
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter'
 import { ErrorHandlingMiddleware } from './common/middleware/error-handling.middleware'
 import { ErrorRecoveryService } from './common/services/error-recovery.service'
+
+// 安全相关导入
+import { SecurityMiddleware } from './modules/security/security.middleware'
 
 @Module({
   imports: [
@@ -78,6 +82,7 @@ import { ErrorRecoveryService } from './common/services/error-recovery.service'
     ImageProcessingModule, // 重新启用，使用简化版本
     CompressionModule,
     MonitoringModule,
+    SecurityModule,
   ],
   controllers: [AppController],
   providers: [
@@ -91,6 +96,6 @@ import { ErrorRecoveryService } from './common/services/error-recovery.service'
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
-    consumer.apply(ErrorHandlingMiddleware).forRoutes('*')
+    consumer.apply(SecurityMiddleware, ErrorHandlingMiddleware).forRoutes('*')
   }
 }
