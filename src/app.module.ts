@@ -1,8 +1,9 @@
-import { Module } from '@nestjs/common'
+import { Module, MiddlewareConsumer, NestModule } from '@nestjs/common'
 import { ConfigModule, ConfigService } from '@nestjs/config'
 import { ServeStaticModule } from '@nestjs/serve-static'
 import { ThrottlerModule } from '@nestjs/throttler'
 import { ScheduleModule } from '@nestjs/schedule'
+import { APP_FILTER } from '@nestjs/core'
 import { join } from 'path'
 
 import { AppController } from './app.controller'
@@ -16,6 +17,11 @@ import { MonitoringModule } from './modules/monitoring/monitoring.module'
 import { AuthModule } from './modules/auth/auth.module'
 import { StorageModule } from './modules/storage/storage.module'
 import configuration, { validateConfig } from './config/configuration'
+
+// 错误处理相关导入
+import { GlobalExceptionFilter } from './common/filters/global-exception.filter'
+import { ErrorHandlingMiddleware } from './common/middleware/error-handling.middleware'
+import { ErrorRecoveryService } from './common/services/error-recovery.service'
 
 @Module({
   imports: [
@@ -74,6 +80,17 @@ import configuration, { validateConfig } from './config/configuration'
     MonitoringModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    ErrorRecoveryService,
+    {
+      provide: APP_FILTER,
+      useClass: GlobalExceptionFilter,
+    },
+  ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(ErrorHandlingMiddleware).forRoutes('*')
+  }
+}

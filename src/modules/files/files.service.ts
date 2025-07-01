@@ -1,4 +1,12 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common'
+import { Injectable, BadRequestException } from '@nestjs/common'
+import {
+  FileNotFoundException,
+  FileValidationException,
+  FileProcessingException,
+  UnsupportedFileTypeException,
+} from '../../common/exceptions/custom.exceptions'
+import { Retry, FILE_OPERATION_RETRY_OPTIONS } from '../../common/utils/retry.util'
+import { ErrorRecoveryService } from '../../common/services/error-recovery.service'
 import { ConfigService } from '@nestjs/config'
 import { promises as fs } from 'fs'
 
@@ -27,12 +35,14 @@ export class FilesService {
     private readonly configService: ConfigService,
     private readonly validationService: FileValidationService,
     private readonly storageService: FileStorageService,
-    private readonly cacheService: CacheService
+    private readonly cacheService: CacheService,
+    private readonly errorRecoveryService: ErrorRecoveryService
   ) {}
 
   /**
    * 上传单个文件
    */
+  @Retry(FILE_OPERATION_RETRY_OPTIONS)
   async uploadFile(file: Express.Multer.File, uploadDto: FileUploadDto): Promise<FileResponseDto> {
     if (!file) {
       throw new BadRequestException('请选择要上传的文件')
@@ -43,7 +53,7 @@ export class FilesService {
     if (!validation.isValid) {
       // 清理临时文件
       await this.cleanupTempFile(file.path)
-      throw new BadRequestException(`文件验证失败: ${validation.errors.join(', ')}`)
+      throw new FileValidationException(validation.errors)
     }
 
     try {
@@ -81,6 +91,15 @@ export class FilesService {
     } catch (error) {
       // 清理临时文件
       await this.cleanupTempFile(file.path)
+
+      // 尝试错误恢复
+      try {
+        await this.errorRecoveryService.executeRecovery(error)
+      } catch (recoveryError) {
+        // 恢复失败，记录日志但不影响原始错误
+        console.warn('错误恢复失败:', recoveryError.message)
+      }
+
       throw error
     }
   }
@@ -155,7 +174,7 @@ export class FilesService {
   async getFileById(id: string): Promise<FileResponseDto> {
     const fileInfo = await this.storageService.getFileInfo(id)
     if (!fileInfo) {
-      throw new NotFoundException('文件不存在')
+      throw new FileNotFoundException(id)
     }
 
     return this.mapToResponseDto(fileInfo)
