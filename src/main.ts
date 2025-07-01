@@ -5,8 +5,17 @@ import { ConfigService } from '@nestjs/config'
 import helmet from 'helmet'
 import * as compression from 'compression'
 import { AppModule } from './app.module'
+import { validateConfig } from './config/configuration'
 
 async function bootstrap() {
+  // 验证配置
+  try {
+    validateConfig()
+  } catch (error) {
+    console.error('❌ 配置验证失败:', error.message)
+    process.exit(1)
+  }
+
   const app = await NestFactory.create(AppModule)
   const configService = app.get(ConfigService)
 

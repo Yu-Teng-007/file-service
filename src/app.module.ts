@@ -15,13 +15,20 @@ import { CompressionModule } from './modules/compression/compression.module'
 import { MonitoringModule } from './modules/monitoring/monitoring.module'
 import { AuthModule } from './modules/auth/auth.module'
 import { StorageModule } from './modules/storage/storage.module'
+import configuration, { validateConfig } from './config/configuration'
 
 @Module({
   imports: [
     // 配置模块
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: '.env',
+      load: [configuration],
+      envFilePath: [`.env.${process.env.NODE_ENV || 'development'}`, '.env.local', '.env'],
+      expandVariables: true,
+      validate: () => {
+        validateConfig()
+        return process.env
+      },
     }),
 
     // 速率限制
