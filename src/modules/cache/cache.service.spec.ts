@@ -101,11 +101,7 @@ describe('CacheService', () => {
 
       await service.cacheFileMetadata(fileId, metadata)
 
-      expect(cacheManager.set).toHaveBeenCalledWith(
-        `file:metadata:${fileId}`,
-        metadata,
-        3600
-      )
+      expect(cacheManager.set).toHaveBeenCalledWith(`file:metadata:${fileId}`, metadata, 3600)
     })
   })
 
@@ -139,11 +135,7 @@ describe('CacheService', () => {
       const result = await service.incrementFileAccess(fileId)
 
       expect(result).toBe(6)
-      expect(cacheManager.set).toHaveBeenCalledWith(
-        `file:access:${fileId}`,
-        6,
-        { ttl: 86400 }
-      )
+      expect(cacheManager.set).toHaveBeenCalledWith(`file:access:${fileId}`, 6, { ttl: 86400 })
     })
 
     it('should start count at 1 for new file', async () => {
@@ -153,11 +145,109 @@ describe('CacheService', () => {
       const result = await service.incrementFileAccess(fileId)
 
       expect(result).toBe(1)
-      expect(cacheManager.set).toHaveBeenCalledWith(
-        `file:access:${fileId}`,
-        1,
-        { ttl: 86400 }
-      )
+      expect(cacheManager.set).toHaveBeenCalledWith(`file:access:${fileId}`, 1, { ttl: 86400 })
+    })
+  })
+
+  describe('invalidateFileCache', () => {
+    it('should invalidate file metadata cache', async () => {
+      const fileId = 'file-123'
+
+      await service.invalidateFileCache(fileId)
+
+      expect(cacheManager.del).toHaveBeenCalledWith(`file:metadata:${fileId}`)
+      expect(cacheManager.del).toHaveBeenCalledWith(`file:access:${fileId}`)
+    })
+  })
+
+  describe('invalidateByPattern', () => {
+    it('should invalidate cache by pattern', async () => {
+      const pattern = 'file:*'
+
+      await service.invalidateByPattern(pattern)
+
+      // Since we're using a mock cache manager, we can't test the actual pattern matching
+      // but we can verify the method was called
+      expect(cacheManager.del).toHaveBeenCalled()
+    })
+  })
+
+  describe('getStats', () => {
+    it('should return cache statistics', async () => {
+      const stats = await service.getStats()
+
+      expect(stats).toEqual({
+        hits: 0,
+        misses: 0,
+        hitRate: 0,
+        totalRequests: 0,
+        memoryUsage: 0,
+        keyCount: 0,
+      })
+    })
+  })
+
+  describe('clear', () => {
+    it('should clear all cache', async () => {
+      await service.clear()
+
+      expect(cacheManager.reset).toHaveBeenCalled()
+    })
+  })
+
+  describe('healthCheck', () => {
+    it('should return healthy status when cache is working', async () => {
+      cacheManager.set.mockResolvedValue(undefined)
+      cacheManager.get.mockResolvedValue('test-value')
+      cacheManager.del.mockResolvedValue(undefined)
+
+      const result = await service.healthCheck()
+
+      expect(result).toEqual({
+        status: 'healthy',
+        latency: expect.any(Number),
+        timestamp: expect.any(Date),
+      })
+    })
+
+    it('should return unhealthy status when cache fails', async () => {
+      cacheManager.set.mockRejectedValue(new Error('Cache error'))
+
+      const result = await service.healthCheck()
+
+      expect(result).toEqual({
+        status: 'unhealthy',
+        error: 'Cache error',
+        timestamp: expect.any(Date),
+      })
+    })
+  })
+
+  describe('error handling', () => {
+    it('should handle cache set errors gracefully', async () => {
+      const key = 'test-key'
+      const value = { data: 'test' }
+      cacheManager.set.mockRejectedValue(new Error('Cache set error'))
+
+      // Should not throw, just log the error
+      await expect(service.set(key, value)).resolves.not.toThrow()
+    })
+
+    it('should handle cache get errors gracefully', async () => {
+      const key = 'test-key'
+      cacheManager.get.mockRejectedValue(new Error('Cache get error'))
+
+      const result = await service.get(key)
+
+      expect(result).toBeUndefined()
+    })
+
+    it('should handle cache delete errors gracefully', async () => {
+      const key = 'test-key'
+      cacheManager.del.mockRejectedValue(new Error('Cache delete error'))
+
+      // Should not throw, just log the error
+      await expect(service.del(key)).resolves.not.toThrow()
     })
   })
 })

@@ -1,0 +1,464 @@
+import { Test, TestingModule } from '@nestjs/testing'
+import { ConfigService } from '@nestjs/config'
+import { NotFoundException, ConflictException } from '@nestjs/common'
+import { FileStorageService } from './file-storage.service'
+import { CDNService } from '../cdn/cdn.service'
+import { FileCategory, FileAccessLevel } from '../../types/file.types'
+import * as fs from 'fs'
+import * as path from 'path'
+
+// Mock fs module
+jest.mock('fs', () => ({
+  promises: {
+    mkdir: jest.fn(),
+    rename: jest.fn(),
+    stat: jest.fn(),
+    access: jest.fn(),
+    readFile: jest.fn(),
+    writeFile: jest.fn(),
+    unlink: jest.fn(),
+    readdir: jest.fn(),
+  },
+  constants: {
+    F_OK: 0,
+  },
+}))
+
+describe('FileStorageService', () => {
+  let service: FileStorageService
+  let configService: jest.Mocked<ConfigService>
+  let cdnService: jest.Mocked<CDNService>
+
+  const mockFileInfo = {
+    id: 'test-file-id',
+    originalName: 'test.jpg',
+    filename: 'test.jpg',
+    path: '/uploads/images/test.jpg',
+    url: '/uploads/images/test.jpg',
+    category: FileCategory.IMAGE,
+    accessLevel: FileAccessLevel.PUBLIC,
+    size: 1024,
+    mimeType: 'image/jpeg',
+    uploadedAt: new Date(),
+    checksum: 'abc123',
+  }
+
+  beforeEach(async () => {
+    const mockConfigService = {
+      get: jest.fn(),
+    }
+
+    const mockCDNService = {
+      uploadFile: jest.fn(),
+      deleteFile: jest.fn(),
+      getFileUrl: jest.fn(),
+    }
+
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        FileStorageService,
+        { provide: ConfigService, useValue: mockConfigService },
+        { provide: CDNService, useValue: mockCDNService },
+      ],
+    }).compile()
+
+    service = module.get<FileStorageService>(FileStorageService)
+    configService = module.get(ConfigService)
+    cdnService = module.get(CDNService)
+
+    // Setup default config values
+    configService.get.mockImplementation((key: string) => {
+      const config = {
+        UPLOAD_DIR: 'uploads',
+        CDN_PROVIDER: 'local',
+      }
+      return config[key]
+    })
+
+    // Mock file system operations
+    ;(fs.promises.mkdir as jest.Mock).mockResolvedValue(undefined)
+    ;(fs.promises.rename as jest.Mock).mockResolvedValue(undefined)
+    ;(fs.promises.stat as jest.Mock).mockResolvedValue({
+      size: 1024,
+      isFile: () => true,
+      isDirectory: () => false,
+      mtime: new Date(),
+    })
+    ;(fs.promises.readFile as jest.Mock).mockResolvedValue('{}')
+    ;(fs.promises.writeFile as jest.Mock).mockResolvedValue(undefined)
+    ;(fs.promises.unlink as jest.Mock).mockResolvedValue(undefined)
+  })
+
+  afterEach(() => {
+    jest.clearAllMocks()
+  })
+
+  describe('storeFile', () => {
+    it('should store file successfully', async () => {
+      ;(fs.promises.access as jest.Mock).mockRejectedValue(new Error('File not found'))
+
+      const result = await service.storeFile(
+        '/tmp/temp-file.jpg',
+        'test.jpg',
+        FileCategory.IMAGE,
+        { accessLevel: FileAccessLevel.PUBLIC },
+        { mimeType: 'image/jpeg', checksum: 'abc123' }
+      )
+
+      expect(result).toMatchObject({
+        originalName: 'test.jpg',
+        category: FileCategory.IMAGE,
+        accessLevel: FileAccessLevel.PUBLIC,
+        size: 1024,
+        mimeType: 'image/jpeg',
+        checksum: 'abc123',
+      })
+
+      expect(fs.promises.mkdir).toHaveBeenCalled()
+      expect(fs.promises.rename).toHaveBeenCalledWith(
+        '/tmp/temp-file.jpg',
+        expect.stringContaining('uploads/images/')
+      )
+    })
+
+    it('should throw ConflictException when file exists and overwrite is false', async () => {
+      ;(fs.promises.access as jest.Mock).mockResolvedValue(undefined) // File exists
+
+      await expect(
+        service.storeFile(
+          '/tmp/temp-file.jpg',
+          'test.jpg',
+          FileCategory.IMAGE,
+          { accessLevel: FileAccessLevel.PUBLIC, overwrite: false },
+          { mimeType: 'image/jpeg' }
+        )
+      ).rejects.toThrow(ConflictException)
+    })
+
+    it('should overwrite file when overwrite is true', async () => {
+      ;(fs.promises.access as jest.Mock).mockResolvedValue(undefined) // File exists
+
+      const result = await service.storeFile(
+        '/tmp/temp-file.jpg',
+        'test.jpg',
+        FileCategory.IMAGE,
+        { accessLevel: FileAccessLevel.PUBLIC, overwrite: true },
+        { mimeType: 'image/jpeg' }
+      )
+
+      expect(result).toBeDefined()
+      expect(fs.promises.rename).toHaveBeenCalled()
+    })
+
+    it('should use custom path when provided', async () => {
+      ;(fs.promises.access as jest.Mock).mockRejectedValue(new Error('File not found'))
+
+      const result = await service.storeFile(
+        '/tmp/temp-file.jpg',
+        'test.jpg',
+        FileCategory.IMAGE,
+        { accessLevel: FileAccessLevel.PUBLIC, customPath: 'custom-name' },
+        { mimeType: 'image/jpeg' }
+      )
+
+      expect(result.filename).toBe('custom-name.jpg')
+    })
+  })
+
+  describe('getFileInfo', () => {
+    beforeEach(() => {
+      // Mock metadata file content
+      const metadata = {
+        'test-file-id': {
+          id: 'test-file-id',
+          originalName: 'test.jpg',
+          filename: 'test.jpg',
+          path: '/uploads/images/test.jpg',
+          url: '/uploads/images/test.jpg',
+          category: FileCategory.IMAGE,
+          accessLevel: FileAccessLevel.PUBLIC,
+          size: 1024,
+          mimeType: 'image/jpeg',
+          uploadedAt: new Date().toISOString(),
+          checksum: 'abc123',
+        },
+      }
+      ;(fs.promises.readFile as jest.Mock).mockResolvedValue(JSON.stringify(metadata))
+    })
+
+    it('should return file info when file exists', async () => {
+      const result = await service.getFileInfo('test-file-id')
+
+      expect(result).toMatchObject({
+        id: 'test-file-id',
+        originalName: 'test.jpg',
+        filename: 'test.jpg',
+        category: FileCategory.IMAGE,
+        accessLevel: FileAccessLevel.PUBLIC,
+        size: 1024,
+        mimeType: 'image/jpeg',
+        checksum: 'abc123',
+      })
+      expect(result.uploadedAt).toBeInstanceOf(Date)
+    })
+
+    it('should return null when file does not exist', async () => {
+      ;(fs.promises.readFile as jest.Mock).mockResolvedValue('{}')
+
+      const result = await service.getFileInfo('non-existent-id')
+
+      expect(result).toBeNull()
+    })
+  })
+
+  describe('updateFileInfo', () => {
+    beforeEach(() => {
+      // Mock existing metadata
+      const metadata = {
+        'test-file-id': {
+          id: 'test-file-id',
+          originalName: 'test.jpg',
+          filename: 'test.jpg',
+          path: '/uploads/images/test.jpg',
+          url: '/uploads/images/test.jpg',
+          category: FileCategory.IMAGE,
+          accessLevel: FileAccessLevel.PUBLIC,
+          size: 1024,
+          mimeType: 'image/jpeg',
+          uploadedAt: new Date().toISOString(),
+          checksum: 'abc123',
+        },
+      }
+      ;(fs.promises.readFile as jest.Mock).mockResolvedValue(JSON.stringify(metadata))
+    })
+
+    it('should update file info successfully', async () => {
+      const updates = {
+        filename: 'new-name.jpg',
+        accessLevel: FileAccessLevel.PRIVATE,
+      }
+
+      const result = await service.updateFileInfo('test-file-id', updates)
+
+      expect(result.filename).toBe('new-name.jpg')
+      expect(result.accessLevel).toBe(FileAccessLevel.PRIVATE)
+      expect(fs.promises.writeFile).toHaveBeenCalled()
+    })
+
+    it('should throw NotFoundException when file does not exist', async () => {
+      ;(fs.promises.readFile as jest.Mock).mockResolvedValue('{}')
+
+      await expect(
+        service.updateFileInfo('non-existent-id', { filename: 'new-name.jpg' })
+      ).rejects.toThrow(NotFoundException)
+    })
+  })
+
+  describe('deleteFile', () => {
+    beforeEach(() => {
+      // Mock existing metadata
+      const metadata = {
+        'test-file-id': {
+          id: 'test-file-id',
+          originalName: 'test.jpg',
+          filename: 'test.jpg',
+          path: '/uploads/images/test.jpg',
+          url: '/uploads/images/test.jpg',
+          category: FileCategory.IMAGE,
+          accessLevel: FileAccessLevel.PUBLIC,
+          size: 1024,
+          mimeType: 'image/jpeg',
+          uploadedAt: new Date().toISOString(),
+          checksum: 'abc123',
+        },
+      }
+      ;(fs.promises.readFile as jest.Mock).mockResolvedValue(JSON.stringify(metadata))
+    })
+
+    it('should delete file successfully', async () => {
+      await service.deleteFile('test-file-id')
+
+      expect(fs.promises.unlink).toHaveBeenCalledWith('/uploads/images/test.jpg')
+      expect(fs.promises.writeFile).toHaveBeenCalled() // Metadata update
+    })
+
+    it('should throw NotFoundException when file does not exist', async () => {
+      ;(fs.promises.readFile as jest.Mock).mockResolvedValue('{}')
+
+      await expect(service.deleteFile('non-existent-id')).rejects.toThrow(NotFoundException)
+    })
+
+    it('should continue deletion even if physical file removal fails', async () => {
+      ;(fs.promises.unlink as jest.Mock).mockRejectedValue(new Error('File not found'))
+
+      // Should not throw, just log warning
+      await expect(service.deleteFile('test-file-id')).resolves.not.toThrow()
+      expect(fs.promises.writeFile).toHaveBeenCalled() // Metadata should still be updated
+    })
+  })
+
+  describe('searchFiles', () => {
+    beforeEach(() => {
+      // Mock metadata with multiple files
+      const metadata = {
+        'file-1': {
+          id: 'file-1',
+          originalName: 'image1.jpg',
+          filename: 'image1.jpg',
+          category: FileCategory.IMAGE,
+          accessLevel: FileAccessLevel.PUBLIC,
+          size: 1024,
+          uploadedAt: new Date('2023-01-01').toISOString(),
+        },
+        'file-2': {
+          id: 'file-2',
+          originalName: 'script.js',
+          filename: 'script.js',
+          category: FileCategory.SCRIPT,
+          accessLevel: FileAccessLevel.PRIVATE,
+          size: 2048,
+          uploadedAt: new Date('2023-01-02').toISOString(),
+        },
+        'file-3': {
+          id: 'file-3',
+          originalName: 'image2.png',
+          filename: 'image2.png',
+          category: FileCategory.IMAGE,
+          accessLevel: FileAccessLevel.PUBLIC,
+          size: 512,
+          uploadedAt: new Date('2023-01-03').toISOString(),
+        },
+      }
+      ;(fs.promises.readFile as jest.Mock).mockResolvedValue(JSON.stringify(metadata))
+    })
+
+    it('should search files by category', async () => {
+      const query = {
+        category: FileCategory.IMAGE,
+        page: 1,
+        limit: 10,
+      }
+
+      const result = await service.searchFiles(query)
+
+      expect(result.files).toHaveLength(2)
+      expect(result.total).toBe(2)
+      expect(result.files.every(file => file.category === FileCategory.IMAGE)).toBe(true)
+    })
+
+    it('should search files by filename', async () => {
+      const query = {
+        filename: 'script',
+        page: 1,
+        limit: 10,
+      }
+
+      const result = await service.searchFiles(query)
+
+      expect(result.files).toHaveLength(1)
+      expect(result.files[0].filename).toBe('script.js')
+    })
+
+    it('should paginate results correctly', async () => {
+      const query = {
+        page: 1,
+        limit: 2,
+      }
+
+      const result = await service.searchFiles(query)
+
+      expect(result.files).toHaveLength(2)
+      expect(result.total).toBe(3)
+      expect(result.totalPages).toBe(2)
+      expect(result.page).toBe(1)
+      expect(result.limit).toBe(2)
+    })
+
+    it('should sort files by upload date descending by default', async () => {
+      const query = {
+        page: 1,
+        limit: 10,
+      }
+
+      const result = await service.searchFiles(query)
+
+      expect(result.files).toHaveLength(3)
+      expect(new Date(result.files[0].uploadedAt).getTime()).toBeGreaterThan(
+        new Date(result.files[1].uploadedAt).getTime()
+      )
+    })
+  })
+
+  describe('batchOperation', () => {
+    beforeEach(() => {
+      // Mock metadata with multiple files
+      const metadata = {
+        'file-1': {
+          id: 'file-1',
+          originalName: 'image1.jpg',
+          filename: 'image1.jpg',
+          path: '/uploads/images/image1.jpg',
+          category: FileCategory.IMAGE,
+          accessLevel: FileAccessLevel.PUBLIC,
+          size: 1024,
+          uploadedAt: new Date().toISOString(),
+        },
+        'file-2': {
+          id: 'file-2',
+          originalName: 'image2.jpg',
+          filename: 'image2.jpg',
+          path: '/uploads/images/image2.jpg',
+          category: FileCategory.IMAGE,
+          accessLevel: FileAccessLevel.PUBLIC,
+          size: 2048,
+          uploadedAt: new Date().toISOString(),
+        },
+      }
+      ;(fs.promises.readFile as jest.Mock).mockResolvedValue(JSON.stringify(metadata))
+    })
+
+    it('should delete multiple files', async () => {
+      const operation = {
+        action: 'delete' as const,
+        fileIds: ['file-1', 'file-2'],
+      }
+
+      const result = await service.batchOperation(operation)
+
+      expect(result.success).toBe(true)
+      expect(result.processed).toBe(2)
+      expect(fs.promises.unlink).toHaveBeenCalledTimes(2)
+    })
+
+    it('should update access level for multiple files', async () => {
+      const operation = {
+        action: 'updateAccessLevel' as const,
+        fileIds: ['file-1', 'file-2'],
+        targetAccessLevel: FileAccessLevel.PRIVATE,
+      }
+
+      const result = await service.batchOperation(operation)
+
+      expect(result.success).toBe(true)
+      expect(result.processed).toBe(2)
+      expect(fs.promises.writeFile).toHaveBeenCalled()
+    })
+
+    it('should handle partial failures gracefully', async () => {
+      ;(fs.promises.unlink as jest.Mock)
+        .mockResolvedValueOnce(undefined)
+        .mockRejectedValueOnce(new Error('File not found'))
+
+      const operation = {
+        action: 'delete' as const,
+        fileIds: ['file-1', 'file-2'],
+      }
+
+      const result = await service.batchOperation(operation)
+
+      expect(result.success).toBe(true)
+      expect(result.processed).toBe(1)
+      expect(result.errors).toHaveLength(1)
+    })
+  })
+})
