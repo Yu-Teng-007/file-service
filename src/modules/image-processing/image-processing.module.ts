@@ -35,9 +35,16 @@ import { ImageProcessingController } from './image-processing.controller'
           'image/webp',
           'image/svg+xml',
           'image/tiff',
+          'image/tif',
           'image/avif',
+          'image/bmp',
+          'image/x-bmp',
+          'image/x-icon',
+          'image/vnd.microsoft.icon',
+          'image/heic',
+          'image/heif',
         ]
-        
+
         if (allowedMimes.includes(file.mimetype)) {
           cb(null, true)
         } else {

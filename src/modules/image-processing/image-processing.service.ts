@@ -18,7 +18,20 @@ import {
 @Injectable()
 export class ImageProcessingService {
   private readonly logger = new Logger(ImageProcessingService.name)
-  private readonly supportedFormats = ['jpeg', 'jpg', 'png', 'webp', 'avif', 'tiff', 'gif']
+  private readonly supportedFormats = [
+    'jpeg',
+    'jpg',
+    'png',
+    'webp',
+    'avif',
+    'tiff',
+    'tif',
+    'gif',
+    'bmp',
+    'ico',
+    'heic',
+    'heif',
+  ]
 
   constructor(private configService: ConfigService) {}
 

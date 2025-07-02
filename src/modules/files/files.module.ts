@@ -32,6 +32,15 @@ import { ErrorRecoveryService } from '../../common/services/error-recovery.servi
             cb(null, tempDir)
           },
           filename: (req, file, cb) => {
+            // 处理文件名编码问题
+            try {
+              // 尝试正确解码文件名
+              const originalName = Buffer.from(file.originalname, 'latin1').toString('utf8')
+              file.originalname = originalName
+            } catch (error) {
+              // 如果解码失败，保持原始文件名
+            }
+
             const uniqueSuffix = uuidv4()
             const ext = extname(file.originalname)
             cb(null, `${uniqueSuffix}${ext}`)

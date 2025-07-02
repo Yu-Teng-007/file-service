@@ -129,6 +129,12 @@ export class FileValidationService {
       png: [0x89, 0x50, 0x4e, 0x47],
       gif: [0x47, 0x49, 0x46],
       webp: [0x52, 0x49, 0x46, 0x46],
+      bmp: [0x42, 0x4d],
+      tiff_le: [0x49, 0x49, 0x2a, 0x00], // Little endian TIFF
+      tiff_be: [0x4d, 0x4d, 0x00, 0x2a], // Big endian TIFF
+      avif: [0x00, 0x00, 0x00, 0x20, 0x66, 0x74, 0x79, 0x70, 0x61, 0x76, 0x69, 0x66],
+      ico: [0x00, 0x00, 0x01, 0x00],
+      heic: [0x00, 0x00, 0x00, 0x18, 0x66, 0x74, 0x79, 0x70, 0x68, 0x65, 0x69, 0x63],
     }
 
     let isValidImage = false
@@ -301,14 +307,17 @@ export class FileValidationService {
   validateFileName(filename: string): { isValid: boolean; errors: string[] } {
     const errors: string[] = []
 
+    // 处理文件名编码问题
+    const decodedFilename = this.decodeFileName(filename)
+
     // 检查文件名长度
-    if (filename.length > 255) {
+    if (decodedFilename.length > 255) {
       errors.push('文件名长度不能超过255个字符')
     }
 
     // 检查非法字符
     const illegalChars = /[<>:"/\\|?*\x00-\x1f]/g
-    if (illegalChars.test(filename)) {
+    if (illegalChars.test(decodedFilename)) {
       errors.push('文件名包含非法字符')
     }
 
@@ -337,7 +346,7 @@ export class FileValidationService {
       'LPT8',
       'LPT9',
     ]
-    const nameWithoutExt = filename.split('.')[0].toUpperCase()
+    const nameWithoutExt = decodedFilename.split('.')[0].toUpperCase()
     if (reservedNames.includes(nameWithoutExt)) {
       errors.push('文件名不能使用系统保留名称')
     }
@@ -345,6 +354,57 @@ export class FileValidationService {
     return {
       isValid: errors.length === 0,
       errors,
+    }
+  }
+
+  /**
+   * 解码文件名，处理中文字符编码问题
+   */
+  private decodeFileName(filename: string): string {
+    try {
+      // 检查是否已经是正确的UTF-8编码
+      if (this.isValidUTF8(filename)) {
+        return filename
+      }
+
+      // 尝试从ISO-8859-1解码为UTF-8
+      const buffer = Buffer.from(filename, 'latin1')
+      const decoded = buffer.toString('utf8')
+
+      // 验证解码结果是否有效
+      if (this.isValidUTF8(decoded)) {
+        return decoded
+      }
+
+      // 如果解码失败，返回原始文件名
+      return filename
+    } catch (error) {
+      // 解码失败时返回原始文件名
+      return filename
+    }
+  }
+
+  /**
+   * 检查字符串是否为有效的UTF-8编码
+   */
+  private isValidUTF8(str: string): boolean {
+    try {
+      // 检查是否包含乱码字符
+      const hasGarbledChars = /[\uFFFD\u00C2-\u00C3][\u0080-\u00BF]/.test(str)
+      if (hasGarbledChars) {
+        return false
+      }
+
+      // 检查是否包含中文字符且显示正常
+      const hasChinese = /[\u4e00-\u9fff]/.test(str)
+      if (hasChinese) {
+        // 如果包含中文，检查是否显示正常
+        return !str.includes('�') && !str.includes('?')
+      }
+
+      return true
+    } catch {
+      return false
     }
   }
 }

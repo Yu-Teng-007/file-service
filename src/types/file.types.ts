@@ -129,6 +129,62 @@ export const FILE_TYPE_CONFIGS: Record<string, FileTypeConfig> = {
     mimeTypes: ['image/svg+xml'],
     description: 'SVG矢量图文件',
   },
+  jpeg: {
+    category: FileCategory.IMAGE,
+    allowedExtensions: ['.jpeg'],
+    maxSize: 10 * 1024 * 1024,
+    mimeTypes: ['image/jpeg'],
+    description: 'JPEG图片文件',
+  },
+  bmp: {
+    category: FileCategory.IMAGE,
+    allowedExtensions: ['.bmp'],
+    maxSize: 20 * 1024 * 1024,
+    mimeTypes: ['image/bmp', 'image/x-bmp'],
+    description: 'BMP位图文件',
+  },
+  tiff: {
+    category: FileCategory.IMAGE,
+    allowedExtensions: ['.tiff', '.tif'],
+    maxSize: 50 * 1024 * 1024,
+    mimeTypes: ['image/tiff', 'image/tif'],
+    description: 'TIFF图片文件',
+  },
+  tif: {
+    category: FileCategory.IMAGE,
+    allowedExtensions: ['.tif'],
+    maxSize: 50 * 1024 * 1024,
+    mimeTypes: ['image/tiff', 'image/tif'],
+    description: 'TIF图片文件',
+  },
+  avif: {
+    category: FileCategory.IMAGE,
+    allowedExtensions: ['.avif'],
+    maxSize: 10 * 1024 * 1024,
+    mimeTypes: ['image/avif'],
+    description: 'AVIF图片文件',
+  },
+  ico: {
+    category: FileCategory.IMAGE,
+    allowedExtensions: ['.ico'],
+    maxSize: 1 * 1024 * 1024,
+    mimeTypes: ['image/x-icon', 'image/vnd.microsoft.icon'],
+    description: 'ICO图标文件',
+  },
+  heic: {
+    category: FileCategory.IMAGE,
+    allowedExtensions: ['.heic'],
+    maxSize: 20 * 1024 * 1024,
+    mimeTypes: ['image/heic'],
+    description: 'HEIC图片文件',
+  },
+  heif: {
+    category: FileCategory.IMAGE,
+    allowedExtensions: ['.heif'],
+    maxSize: 20 * 1024 * 1024,
+    mimeTypes: ['image/heif'],
+    description: 'HEIF图片文件',
+  },
 
   // Scripts
   js: {

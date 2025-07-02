@@ -38,7 +38,7 @@ async function bootstrap() {
     origin: corsOrigins,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-API-Key'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-API-Key', 'x-csrf-token'],
   })
 
   // 全局验证管道

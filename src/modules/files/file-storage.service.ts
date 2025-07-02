@@ -98,8 +98,11 @@ export class FileStorageService {
     options: FileUploadOptions = {},
     additionalInfo: Partial<UploadedFileInfo> = {}
   ): Promise<UploadedFileInfo> {
+    // 确保原始文件名使用正确的UTF-8编码
+    const decodedOriginalName = this.decodeFileName(originalName)
+
     const fileId = uuidv4()
-    const ext = extname(originalName)
+    const ext = extname(decodedOriginalName)
     const filename = options.customPath ? `${options.customPath}${ext}` : `${fileId}${ext}`
 
     const categoryDir = join(this.uploadDir, category)
@@ -121,7 +124,7 @@ export class FileStorageService {
 
     const fileInfo: UploadedFileInfo = {
       id: fileId,
-      originalName,
+      originalName: decodedOriginalName,
       filename,
       path: finalPath,
       url: `/uploads/${category}/${filename}`,
@@ -422,6 +425,57 @@ export class FileStorageService {
       }
     } catch (error) {
       console.warn('清理临时文件失败:', error)
+    }
+  }
+
+  /**
+   * 解码文件名，处理中文字符编码问题
+   */
+  private decodeFileName(filename: string): string {
+    try {
+      // 检查是否已经是正确的UTF-8编码
+      if (this.isValidUTF8(filename)) {
+        return filename
+      }
+
+      // 尝试从ISO-8859-1解码为UTF-8
+      const buffer = Buffer.from(filename, 'latin1')
+      const decoded = buffer.toString('utf8')
+
+      // 验证解码结果是否有效
+      if (this.isValidUTF8(decoded)) {
+        return decoded
+      }
+
+      // 如果解码失败，返回原始文件名
+      return filename
+    } catch (error) {
+      // 解码失败时返回原始文件名
+      return filename
+    }
+  }
+
+  /**
+   * 检查字符串是否为有效的UTF-8编码
+   */
+  private isValidUTF8(str: string): boolean {
+    try {
+      // 检查是否包含乱码字符
+      const hasGarbledChars = /[\uFFFD\u00C2-\u00C3][\u0080-\u00BF]/.test(str)
+      if (hasGarbledChars) {
+        return false
+      }
+
+      // 检查是否包含中文字符且显示正常
+      const hasChinese = /[\u4e00-\u9fff]/.test(str)
+      if (hasChinese) {
+        // 如果包含中文，检查是否显示正常
+        return !str.includes('�') && !str.includes('?')
+      }
+
+      return true
+    } catch {
+      return false
     }
   }
 }
