@@ -30,8 +30,8 @@
           </el-form-item>
 
           <el-form-item>
-            <el-button type="primary" @click="saveApiConfig"> 保存API配置 </el-button>
-            <el-button @click="testConnection"> 测试连接 </el-button>
+            <el-button type="primary" @click="saveApiConfig">保存API配置</el-button>
+            <el-button @click="testConnection">测试连接</el-button>
           </el-form-item>
         </el-form>
       </el-card>
@@ -74,8 +74,8 @@
           </el-form-item>
 
           <el-form-item>
-            <el-button type="primary" @click="saveUploadConfig"> 保存上传配置 </el-button>
-            <el-button @click="resetUploadConfig"> 重置为默认 </el-button>
+            <el-button type="primary" @click="saveUploadConfig">保存上传配置</el-button>
+            <el-button @click="resetUploadConfig">重置为默认</el-button>
           </el-form-item>
         </el-form>
       </el-card>
@@ -160,7 +160,7 @@
               <h4>重置所有设置</h4>
               <p>将所有配置重置为默认值，此操作不可撤销</p>
             </div>
-            <el-button type="danger" @click="resetAllSettings"> 重置设置 </el-button>
+            <el-button type="danger" @click="resetAllSettings">重置设置</el-button>
           </div>
 
           <div class="action-item">
@@ -168,7 +168,7 @@
               <h4>清除缓存</h4>
               <p>清除浏览器中的所有缓存数据</p>
             </div>
-            <el-button type="warning" @click="clearCache"> 清除缓存 </el-button>
+            <el-button type="warning" @click="clearCache">清除缓存</el-button>
           </div>
         </div>
       </el-card>
@@ -375,12 +375,17 @@ onMounted(() => {
 
 <style scoped>
 .settings-page {
-  max-width: 800px;
+  height: calc(100vh - 60px);
+  width: 100%;
+  padding: 20px;
+  box-sizing: border-box;
+  overflow-y: auto;
   margin: 0 auto;
 }
 
 .page-header {
-  margin-bottom: 24px;
+  margin-bottom: 20px;
+  flex-shrink: 0;
 }
 
 .page-header h1 {
@@ -394,11 +399,11 @@ onMounted(() => {
 }
 
 .settings-content {
-  space-y: 24px;
+  space-y: 20px;
 }
 
 .settings-card {
-  margin-bottom: 24px;
+  margin-bottom: 20px;
 }
 
 .card-header {

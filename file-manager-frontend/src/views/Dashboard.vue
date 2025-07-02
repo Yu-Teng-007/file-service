@@ -129,7 +129,7 @@
                 <Document v-if="file.category === 'documents'" />
                 <Picture v-else-if="file.category === 'images'" />
                 <VideoPlay v-else-if="file.category === 'videos'" />
-                <Headphone v-else-if="file.category === 'music'" />
+                <Headset v-else-if="file.category === 'music'" />
                 <Document v-else />
               </el-icon>
             </div>
@@ -318,11 +318,16 @@ onMounted(() => {
 
 <style scoped>
 .dashboard {
-  height: 100%;
+  height: calc(100vh - 60px);
+  width: 100%;
+  padding: 20px;
+  box-sizing: border-box;
+  overflow-y: auto;
 }
 
 .page-header {
-  margin-bottom: 24px;
+  margin-bottom: 20px;
+  flex-shrink: 0;
 }
 
 .page-header h1 {
@@ -339,7 +344,7 @@ onMounted(() => {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
   gap: 20px;
-  margin-bottom: 24px;
+  margin-bottom: 20px;
 }
 
 .stat-card {
@@ -377,15 +382,26 @@ onMounted(() => {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 20px;
+  height: calc(100vh - 300px);
+  min-height: 400px;
 }
 
 .disk-usage-card,
 .category-stats-card {
   grid-column: span 1;
+  overflow: hidden;
 }
 
 .recent-files-card {
   grid-column: span 2;
+  overflow: hidden;
+}
+
+.recent-files-card :deep(.el-card__body) {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .card-header {
@@ -450,8 +466,9 @@ onMounted(() => {
 }
 
 .recent-files {
-  max-height: 400px;
+  flex: 1;
   overflow-y: auto;
+  min-height: 0;
 }
 
 .recent-file-item {

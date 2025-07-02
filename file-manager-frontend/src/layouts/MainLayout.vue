@@ -165,13 +165,42 @@ configStore.init()
 
 <style scoped>
 .main-layout {
+  width: 100vw;
   height: 100vh;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow: hidden;
+}
+
+.main-layout :deep(.el-container) {
+  height: 100%;
+  width: 100%;
+}
+
+.main-layout :deep(.el-aside) {
+  height: 100vh;
+}
+
+.main-layout :deep(.el-header) {
+  height: 60px !important;
+  padding: 0;
+}
+
+.main-layout :deep(.el-main) {
+  height: calc(100vh - 60px);
+  padding: 0;
+  overflow: hidden;
 }
 
 .sidebar {
   background-color: var(--el-bg-color-page);
   border-right: 1px solid var(--el-border-color);
   transition: width 0.3s;
+  height: 100vh;
+  overflow-y: auto;
 }
 
 .logo {
@@ -183,6 +212,7 @@ configStore.init()
   font-size: 18px;
   font-weight: bold;
   color: var(--el-color-primary);
+  flex-shrink: 0;
 }
 
 .logo-text {
@@ -191,6 +221,8 @@ configStore.init()
 
 .sidebar-menu {
   border-right: none;
+  height: calc(100vh - 60px);
+  overflow-y: auto;
 }
 
 .header {
@@ -200,6 +232,8 @@ configStore.init()
   align-items: center;
   justify-content: space-between;
   padding: 0 20px;
+  height: 60px;
+  flex-shrink: 0;
 }
 
 .header-left {
@@ -218,5 +252,7 @@ configStore.init()
   background-color: var(--el-bg-color-page);
   padding: 20px;
   overflow-y: auto;
+  height: calc(100vh - 60px);
+  width: 100%;
 }
 </style>

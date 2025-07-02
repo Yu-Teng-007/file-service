@@ -20,12 +20,7 @@
       <template #header>
         <div class="card-header">
           <span>{{ $t('upload.uploadProgress') }}</span>
-          <el-button
-            size="small"
-            text
-            type="danger"
-            @click="filesStore.clearUploadProgress"
-          >
+          <el-button size="small" text type="danger" @click="filesStore.clearUploadProgress">
             清除记录
           </el-button>
         </div>
@@ -43,16 +38,21 @@
               {{ getStatusText(progress.status) }}
             </div>
           </div>
-          
+
           <div class="progress-bar">
             <el-progress
               :percentage="progress.progress"
-              :status="progress.status === 'error' ? 'exception' : 
-                      progress.status === 'success' ? 'success' : undefined"
+              :status="
+                progress.status === 'error'
+                  ? 'exception'
+                  : progress.status === 'success'
+                    ? 'success'
+                    : undefined
+              "
               :stroke-width="6"
             />
           </div>
-          
+
           <div v-if="progress.error" class="error-message">
             {{ progress.error }}
           </div>
@@ -65,32 +65,22 @@
       <template #header>
         <div class="card-header">
           <span>最近上传的文件</span>
-          <el-button
-            size="small"
-            text
-            @click="goToFileList"
-          >
-            查看全部
-          </el-button>
+          <el-button size="small" text @click="goToFileList">查看全部</el-button>
         </div>
       </template>
 
       <div class="recent-files-list">
-        <div
-          v-for="file in recentFiles"
-          :key="file.id"
-          class="recent-file-item"
-        >
+        <div v-for="file in recentFiles" :key="file.id" class="recent-file-item">
           <div class="file-icon">
             <el-icon size="24">
               <Document v-if="file.category === 'documents'" />
               <Picture v-else-if="file.category === 'images'" />
               <VideoPlay v-else-if="file.category === 'videos'" />
-              <Headphone v-else-if="file.category === 'music'" />
+              <Headset v-else-if="file.category === 'music'" />
               <Document v-else />
             </el-icon>
           </div>
-          
+
           <div class="file-info">
             <div class="file-name">{{ file.originalName }}</div>
             <div class="file-meta">
@@ -98,22 +88,10 @@
               <span>{{ formatTime(file.uploadedAt) }}</span>
             </div>
           </div>
-          
+
           <div class="file-actions">
-            <el-button
-              size="small"
-              text
-              @click="previewFile(file)"
-            >
-              预览
-            </el-button>
-            <el-button
-              size="small"
-              text
-              @click="downloadFile(file)"
-            >
-              下载
-            </el-button>
+            <el-button size="small" text @click="previewFile(file)">预览</el-button>
+            <el-button size="small" text @click="downloadFile(file)">下载</el-button>
           </div>
         </div>
       </div>
@@ -126,12 +104,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { ElMessage } from 'element-plus'
-import {
-  Document,
-  Picture,
-  VideoPlay,
-  Headphone,
-} from '@element-plus/icons-vue'
+import { Document, Picture, VideoPlay, Headset } from '@element-plus/icons-vue'
 import dayjs from 'dayjs'
 import FileUpload from '@/components/FileUpload.vue'
 import { useConfigStore } from '@/stores/config'
@@ -214,12 +187,18 @@ onMounted(() => {
 
 <style scoped>
 .upload-page {
+  height: calc(100vh - 60px);
+  width: 100%;
+  padding: 20px;
+  box-sizing: border-box;
+  overflow-y: auto;
   max-width: 1200px;
   margin: 0 auto;
 }
 
 .page-header {
-  margin-bottom: 24px;
+  margin-bottom: 20px;
+  flex-shrink: 0;
 }
 
 .page-header h1 {
@@ -233,12 +212,26 @@ onMounted(() => {
 }
 
 .upload-card {
-  margin-bottom: 24px;
+  margin-bottom: 20px;
+  flex-shrink: 0;
 }
 
 .progress-card,
 .recent-files-card {
-  margin-bottom: 24px;
+  margin-bottom: 20px;
+}
+
+.recent-files-card {
+  flex: 1;
+  min-height: 300px;
+  overflow: hidden;
+}
+
+.recent-files-card :deep(.el-card__body) {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .card-header {
@@ -302,6 +295,9 @@ onMounted(() => {
 
 .recent-files-list {
   space-y: 12px;
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
 }
 
 .recent-file-item {

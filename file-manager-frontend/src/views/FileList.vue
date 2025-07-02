@@ -6,7 +6,7 @@
         <h1>{{ $t('nav.fileList') }}</h1>
         <div class="stats">
           <span>总计 {{ filesStore.total }} 个文件</span>
-          <span v-if="filesStore.hasSelection"> 已选择 {{ filesStore.selectedCount }} 个 </span>
+          <span v-if="filesStore.hasSelection">已选择 {{ filesStore.selectedCount }} 个</span>
         </div>
       </div>
 
@@ -98,7 +98,7 @@
                 <Document v-if="row.category === 'documents'" />
                 <Picture v-else-if="row.category === 'images'" />
                 <VideoPlay v-else-if="row.category === 'videos'" />
-                <Headphone v-else-if="row.category === 'music'" />
+                <Headset v-else-if="row.category === 'music'" />
                 <Document v-else />
               </el-icon>
               <span class="file-name" @click="previewFile(row)">
@@ -137,11 +137,12 @@
         <el-table-column label="操作" width="200" fixed="right">
           <template #default="{ row }">
             <div class="action-buttons">
-              <el-button size="small" text @click="previewFile(row)"> 预览 </el-button>
-              <el-button size="small" text @click="downloadFile(row)"> 下载 </el-button>
+              <el-button size="small" text @click="previewFile(row)">预览</el-button>
+              <el-button size="small" text @click="downloadFile(row)">下载</el-button>
               <el-dropdown @command="cmd => handleFileAction(cmd, row)">
                 <el-button size="small" text>
-                  更多<el-icon class="el-icon--right"><ArrowDown /></el-icon>
+                  更多
+                  <el-icon class="el-icon--right"><ArrowDown /></el-icon>
                 </el-button>
                 <template #dropdown>
                   <el-dropdown-menu>
@@ -179,7 +180,7 @@
             <el-icon v-else size="48" class="file-type-icon">
               <Document v-if="file.category === 'documents'" />
               <VideoPlay v-else-if="file.category === 'videos'" />
-              <Headphone v-else-if="file.category === 'music'" />
+              <Headset v-else-if="file.category === 'music'" />
               <Document v-else />
             </el-icon>
           </div>
@@ -195,8 +196,8 @@
           </div>
 
           <div class="file-actions">
-            <el-button size="small" text @click.stop="previewFile(file)"> 预览 </el-button>
-            <el-button size="small" text @click.stop="downloadFile(file)"> 下载 </el-button>
+            <el-button size="small" text @click.stop="previewFile(file)">预览</el-button>
+            <el-button size="small" text @click.stop="downloadFile(file)">下载</el-button>
           </div>
         </div>
       </div>
@@ -242,7 +243,7 @@ import {
   Document,
   Picture,
   VideoPlay,
-  Headphone,
+  Headset,
 } from '@element-plus/icons-vue'
 import dayjs from 'dayjs'
 import { useConfigStore } from '@/stores/config'
@@ -450,16 +451,21 @@ onMounted(() => {
 
 <style scoped>
 .file-list-page {
-  height: 100%;
+  height: calc(100vh - 60px);
+  width: 100%;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
+  padding: 20px;
+  box-sizing: border-box;
 }
 
 .page-header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
+  flex-shrink: 0;
 }
 
 .header-left h1 {
@@ -478,11 +484,12 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
   padding: 16px;
   background-color: var(--el-bg-color);
   border-radius: 8px;
   border: 1px solid var(--el-border-color);
+  flex-shrink: 0;
 }
 
 .toolbar-left {
@@ -499,7 +506,28 @@ onMounted(() => {
 
 .table-card {
   flex: 1;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.table-card :deep(.el-card__body) {
+  height: 100%;
+  padding: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.table-card :deep(.el-table) {
+  flex: 1;
+  overflow: auto;
+}
+
+.table-card :deep(.el-table__body-wrapper) {
+  overflow-y: auto;
+  max-height: calc(100vh - 300px);
 }
 
 .file-name-cell {
@@ -529,7 +557,16 @@ onMounted(() => {
 
 .grid-view {
   flex: 1;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.grid-view :deep(.el-card__body) {
+  height: 100%;
+  padding: 0;
+  overflow: hidden;
 }
 
 .file-grid {
@@ -537,6 +574,8 @@ onMounted(() => {
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   gap: 16px;
   padding: 16px;
+  overflow-y: auto;
+  height: calc(100vh - 300px);
 }
 
 .file-card {
@@ -609,6 +648,9 @@ onMounted(() => {
 .pagination {
   display: flex;
   justify-content: center;
-  padding: 20px 0;
+  padding: 16px 0;
+  flex-shrink: 0;
+  background-color: var(--el-bg-color);
+  border-top: 1px solid var(--el-border-color);
 }
 </style>
