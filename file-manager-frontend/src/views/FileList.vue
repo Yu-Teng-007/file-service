@@ -302,7 +302,7 @@ const getAccessLevelType = (level: string) => {
     case FileAccessLevel.PROTECTED:
       return 'warning'
     default:
-      return ''
+      return 'info'
   }
 }
 
@@ -629,7 +629,6 @@ onMounted(() => {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  margin-bottom: 4px;
 }
 
 .file-meta {

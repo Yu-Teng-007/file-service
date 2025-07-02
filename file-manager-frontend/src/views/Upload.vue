@@ -192,7 +192,6 @@ onMounted(() => {
   padding: 20px;
   box-sizing: border-box;
   overflow-y: auto;
-  max-width: 1200px;
   margin: 0 auto;
 }
 
@@ -241,7 +240,9 @@ onMounted(() => {
 }
 
 .progress-list {
-  space-y: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .progress-item {
@@ -294,10 +295,13 @@ onMounted(() => {
 }
 
 .recent-files-list {
-  space-y: 12px;
   flex: 1;
   overflow-y: auto;
   min-height: 0;
+}
+
+.recent-files-list > * + * {
+  margin-top: 12px;
 }
 
 .recent-file-item {
@@ -330,7 +334,6 @@ onMounted(() => {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  margin-bottom: 4px;
 }
 
 .file-meta {

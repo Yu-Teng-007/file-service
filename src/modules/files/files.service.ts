@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException } from '@nestjs/common'
+import { Injectable, BadRequestException, StreamableFile } from '@nestjs/common'
 import {
   FileNotFoundException,
   FileValidationException,
@@ -8,7 +8,8 @@ import {
 import { Retry, FILE_OPERATION_RETRY_OPTIONS } from '../../common/utils/retry.util'
 import { ErrorRecoveryService } from '../../common/services/error-recovery.service'
 import { ConfigService } from '@nestjs/config'
-import { promises as fs } from 'fs'
+import { promises as fs, createReadStream } from 'fs'
+import { join } from 'path'
 
 import { FileValidationService } from './file-validation.service'
 import { FileStorageService } from './file-storage.service'
@@ -249,6 +250,61 @@ export class FilesService {
     } catch (error) {
       console.warn(`清理临时文件失败: ${filePath}`, error)
     }
+  }
+
+  /**
+   * 获取文件流用于下载
+   */
+  async getFileStream(id: string): Promise<{ stream: StreamableFile; fileInfo: UploadedFileInfo }> {
+    const fileInfo = await this.storageService.getFileInfo(id)
+    if (!fileInfo) {
+      throw new FileNotFoundException(id)
+    }
+
+    // 检查文件是否存在
+    try {
+      await fs.access(fileInfo.path)
+    } catch (error) {
+      throw new FileNotFoundException(id, '文件不存在或已被删除')
+    }
+
+    const stream = createReadStream(fileInfo.path)
+    return {
+      stream: new StreamableFile(stream),
+      fileInfo,
+    }
+  }
+
+  /**
+   * 获取文件预览流
+   */
+  async getFilePreview(
+    id: string
+  ): Promise<{ stream: StreamableFile; fileInfo: UploadedFileInfo }> {
+    // 对于预览，我们使用相同的逻辑，但可以在未来添加特殊处理
+    // 比如对图片生成缩略图，对文档生成预览等
+    return this.getFileStream(id)
+  }
+
+  /**
+   * 获取文件缩略图流
+   */
+  async getFileThumbnail(
+    id: string,
+    size: 'small' | 'medium' | 'large' = 'medium'
+  ): Promise<{ stream: StreamableFile; fileInfo: UploadedFileInfo }> {
+    const fileInfo = await this.storageService.getFileInfo(id)
+    if (!fileInfo) {
+      throw new FileNotFoundException(id)
+    }
+
+    // 检查是否为图片文件
+    if (!fileInfo.mimeType.startsWith('image/')) {
+      throw new BadRequestException('只有图片文件支持缩略图功能')
+    }
+
+    // 目前返回原图，未来可以集成图片处理服务生成真正的缩略图
+    return this.getFileStream(id)
   }
 
   /**

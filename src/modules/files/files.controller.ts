@@ -12,7 +12,11 @@ import {
   UseInterceptors,
   HttpStatus,
   ParseUUIDPipe,
+  Res,
+  Header,
+  StreamableFile,
 } from '@nestjs/common'
+import { Response } from 'express'
 import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express'
 import { Cacheable, CacheEvict } from '../cache/decorators/cache.decorator'
 import { CacheInterceptor } from '../cache/interceptors/cache.interceptor'
@@ -292,5 +296,86 @@ export class FilesController {
       message: `批量${batchDto.action}操作完成`,
       data: result,
     }
+  }
+
+  @Get(':id/download')
+  @ApiOperation({ summary: '下载文件', description: '根据文件ID下载文件' })
+  @ApiParam({ name: 'id', description: '文件ID' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: '文件下载成功',
+  })
+  @ApiResponse({ status: HttpStatus.NOT_FOUND, description: '文件不存在' })
+  async downloadFile(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Res({ passthrough: true }) res: Response
+  ): Promise<StreamableFile> {
+    const { stream, fileInfo } = await this.filesService.getFileStream(id)
+
+    // 设置响应头
+    res.set({
+      'Content-Type': fileInfo.mimeType,
+      'Content-Disposition': `attachment; filename="${encodeURIComponent(fileInfo.originalName)}"`,
+      'Content-Length': fileInfo.size.toString(),
+    })
+
+    return stream
+  }
+
+  @Get(':id/preview')
+  @ApiOperation({ summary: '预览文件', description: '根据文件ID预览文件' })
+  @ApiParam({ name: 'id', description: '文件ID' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: '文件预览成功',
+  })
+  @ApiResponse({ status: HttpStatus.NOT_FOUND, description: '文件不存在' })
+  async previewFile(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Res({ passthrough: true }) res: Response
+  ): Promise<StreamableFile> {
+    const { stream, fileInfo } = await this.filesService.getFilePreview(id)
+
+    // 设置响应头
+    res.set({
+      'Content-Type': fileInfo.mimeType,
+      'Content-Disposition': `inline; filename="${encodeURIComponent(fileInfo.originalName)}"`,
+      'Content-Length': fileInfo.size.toString(),
+      'Cache-Control': 'public, max-age=3600', // 缓存1小时
+    })
+
+    return stream
+  }
+
+  @Get(':id/thumbnail')
+  @ApiOperation({ summary: '获取文件缩略图', description: '根据文件ID获取缩略图' })
+  @ApiParam({ name: 'id', description: '文件ID' })
+  @ApiQuery({
+    name: 'size',
+    description: '缩略图尺寸',
+    enum: ['small', 'medium', 'large'],
+    required: false,
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: '缩略图获取成功',
+  })
+  @ApiResponse({ status: HttpStatus.NOT_FOUND, description: '文件不存在' })
+  @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: '文件类型不支持缩略图' })
+  async getThumbnail(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Query('size') size: 'small' | 'medium' | 'large' = 'medium',
+    @Res({ passthrough: true }) res: Response
+  ): Promise<StreamableFile> {
+    const { stream, fileInfo } = await this.filesService.getFileThumbnail(id, size)
+
+    // 设置响应头
+    res.set({
+      'Content-Type': fileInfo.mimeType,
+      'Content-Disposition': `inline; filename="thumb_${size}_${encodeURIComponent(fileInfo.originalName)}"`,
+      'Cache-Control': 'public, max-age=86400', // 缓存24小时
+    })
+
+    return stream
   }
 }
