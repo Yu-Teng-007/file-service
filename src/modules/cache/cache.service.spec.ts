@@ -135,7 +135,7 @@ describe('CacheService', () => {
       const result = await service.incrementFileAccess(fileId)
 
       expect(result).toBe(6)
-      expect(cacheManager.set).toHaveBeenCalledWith(`file:access:${fileId}`, 6, { ttl: 86400 })
+      expect(cacheManager.set).toHaveBeenCalledWith(`file:access:${fileId}`, 6, 86400)
     })
 
     it('should start count at 1 for new file', async () => {
@@ -145,7 +145,7 @@ describe('CacheService', () => {
       const result = await service.incrementFileAccess(fileId)
 
       expect(result).toBe(1)
-      expect(cacheManager.set).toHaveBeenCalledWith(`file:access:${fileId}`, 1, { ttl: 86400 })
+      expect(cacheManager.set).toHaveBeenCalledWith(`file:access:${fileId}`, 1, 86400)
     })
   })
 

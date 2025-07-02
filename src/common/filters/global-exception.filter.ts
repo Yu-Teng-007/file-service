@@ -272,19 +272,21 @@ export class GlobalExceptionFilter implements ExceptionFilter {
 
       // 异步记录错误统计，不阻塞响应
       setImmediate(() => {
-        this.monitoringService
-          .logFileAccess({
-            fileId: 'error',
-            fileName: request.path,
-            filePath: request.path,
-            accessType: 'read',
-            userAgent: request.headers['user-agent'] || 'unknown',
-            ipAddress: request.ip || 'unknown',
-            errorMessage: exception instanceof Error ? exception.message : 'Unknown error',
-          })
-          .catch(err => {
-            this.logger.warn('Failed to record error metrics', err)
-          })
+        if (this.monitoringService) {
+          this.monitoringService
+            .logFileAccess({
+              fileId: 'error',
+              fileName: request.path,
+              filePath: request.path,
+              accessType: 'read',
+              userAgent: request.headers['user-agent'] || 'unknown',
+              ipAddress: request.ip || 'unknown',
+              errorMessage: exception instanceof Error ? exception.message : 'Unknown error',
+            })
+            .catch(err => {
+              this.logger.warn('Failed to record error metrics', err)
+            })
+        }
       })
     } catch (error) {
       // 忽略监控记录错误，避免循环错误

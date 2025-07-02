@@ -5,6 +5,7 @@ import { FilesService } from './files.service'
 import { FileValidationService } from './file-validation.service'
 import { FileStorageService } from './file-storage.service'
 import { CacheService } from '../cache/cache.service'
+import { ErrorRecoveryService } from '../../common/services/error-recovery.service'
 import { FileCategory, FileAccessLevel } from '../../types/file.types'
 import { FileUploadDto, FileUpdateDto, FileBatchOperationDto } from '../../types/dto'
 
@@ -38,7 +39,9 @@ describe('FilesService', () => {
     accessLevel: FileAccessLevel.PUBLIC,
     size: 1024,
     mimeType: 'image/jpeg',
+    uploadedBy: undefined,
     uploadedAt: new Date(),
+    metadata: undefined,
     checksum: 'abc123',
   }
 
@@ -68,6 +71,11 @@ describe('FilesService', () => {
       get: jest.fn(),
     }
 
+    const mockErrorRecoveryService = {
+      executeRecovery: jest.fn(),
+      addRecoveryPlan: jest.fn(),
+    }
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         FilesService,
@@ -75,6 +83,7 @@ describe('FilesService', () => {
         { provide: FileStorageService, useValue: mockStorageService },
         { provide: CacheService, useValue: mockCacheService },
         { provide: ConfigService, useValue: mockConfigService },
+        { provide: ErrorRecoveryService, useValue: mockErrorRecoveryService },
       ],
     }).compile()
 
@@ -134,12 +143,15 @@ describe('FilesService', () => {
         id: mockFileInfo.id,
         originalName: mockFileInfo.originalName,
         filename: mockFileInfo.filename,
+        path: mockFileInfo.path,
         url: mockFileInfo.url,
         category: mockFileInfo.category,
         accessLevel: mockFileInfo.accessLevel,
         size: mockFileInfo.size,
         mimeType: mockFileInfo.mimeType,
+        uploadedBy: mockFileInfo.uploadedBy,
         uploadedAt: mockFileInfo.uploadedAt,
+        metadata: mockFileInfo.metadata,
         checksum: mockFileInfo.checksum,
       })
 
@@ -271,12 +283,15 @@ describe('FilesService', () => {
         id: mockFileInfo.id,
         originalName: mockFileInfo.originalName,
         filename: mockFileInfo.filename,
+        path: mockFileInfo.path,
         url: mockFileInfo.url,
         category: mockFileInfo.category,
         accessLevel: mockFileInfo.accessLevel,
         size: mockFileInfo.size,
         mimeType: mockFileInfo.mimeType,
+        uploadedBy: mockFileInfo.uploadedBy,
         uploadedAt: mockFileInfo.uploadedAt,
+        metadata: mockFileInfo.metadata,
         checksum: mockFileInfo.checksum,
       })
 
@@ -287,7 +302,7 @@ describe('FilesService', () => {
       storageService.getFileInfo.mockResolvedValue(null)
 
       await expect(service.getFileById('non-existent-id')).rejects.toThrow(
-        new NotFoundException('文件不存在')
+        '文件不存在: non-existent-id'
       )
     })
   })
@@ -367,7 +382,7 @@ describe('FilesService', () => {
         fileIds: ['id1', 'id2'],
       }
 
-      const expectedResult = { success: true, processed: 2 }
+      const expectedResult = { success: 2, failed: 0, errors: [], processed: 2 }
       storageService.batchOperation.mockResolvedValue(expectedResult)
 
       const result = await service.batchOperation(batchDto)

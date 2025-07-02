@@ -41,7 +41,7 @@ describe('GlobalExceptionFilter', () => {
     }
 
     const mockMonitoringService = {
-      logFileAccess: jest.fn(),
+      logFileAccess: jest.fn().mockResolvedValue(undefined),
     }
 
     const module: TestingModule = await Test.createTestingModule({
@@ -206,8 +206,10 @@ describe('GlobalExceptionFilter', () => {
       // 由于监控记录是异步的，我们需要等待一下
       setTimeout(() => {
         expect(monitoringService.logFileAccess).toHaveBeenCalledWith({
+          fileId: 'error',
           fileName: '/api/test',
-          accessType: 'error',
+          filePath: '/api/test',
+          accessType: 'read',
           userAgent: 'test-agent',
           ipAddress: '127.0.0.1',
           errorMessage: 'File not found',

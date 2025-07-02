@@ -68,10 +68,7 @@ describe('ImageProcessingService', () => {
     }
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        ImageProcessingService,
-        { provide: ConfigService, useValue: mockConfigService },
-      ],
+      providers: [ImageProcessingService, { provide: ConfigService, useValue: mockConfigService }],
     }).compile()
 
     service = module.get<ImageProcessingService>(ImageProcessingService)
@@ -211,9 +208,8 @@ describe('ImageProcessingService', () => {
 
       expect(mockSharpInstance.webp).toHaveBeenCalledWith({
         quality: 85,
-        progressive: undefined,
         lossless: undefined,
-        effort: undefined,
+        effort: 4,
       })
     })
 
@@ -233,17 +229,13 @@ describe('ImageProcessingService', () => {
         format: 'unsupported' as any,
       })
 
-      await expect(service.processImage(inputPath, outputPath)).rejects.toThrow(
-        BadRequestException
-      )
+      await expect(service.processImage(inputPath, outputPath)).rejects.toThrow(BadRequestException)
     })
 
     it('should throw BadRequestException for invalid file', async () => {
       ;(fs.promises.access as jest.Mock).mockRejectedValue(new Error('File not found'))
 
-      await expect(service.processImage(inputPath, outputPath)).rejects.toThrow(
-        BadRequestException
-      )
+      await expect(service.processImage(inputPath, outputPath)).rejects.toThrow(BadRequestException)
     })
   })
 
@@ -404,9 +396,8 @@ describe('ImageProcessingService', () => {
       expect(result).toBeDefined()
       expect(mockSharpInstance.webp).toHaveBeenCalledWith({
         quality: 85,
-        progressive: undefined,
         lossless: undefined,
-        effort: undefined,
+        effort: 4,
       })
     })
 

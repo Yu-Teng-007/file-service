@@ -13,6 +13,7 @@ import { StorageModule } from '../storage/storage.module'
 import { CacheModule } from '../cache/cache.module'
 import { CDNModule } from '../cdn/cdn.module'
 import { AuthModule } from '../auth/auth.module'
+import { ErrorRecoveryService } from '../../common/services/error-recovery.service'
 
 @Module({
   imports: [
@@ -96,7 +97,7 @@ import { AuthModule } from '../auth/auth.module'
     }),
   ],
   controllers: [FilesController],
-  providers: [FilesService, FileValidationService, FileStorageService],
+  providers: [FilesService, FileValidationService, FileStorageService, ErrorRecoveryService],
   exports: [FilesService],
 })
 export class FilesModule {}

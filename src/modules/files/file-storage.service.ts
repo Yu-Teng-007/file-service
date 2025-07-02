@@ -342,10 +342,11 @@ export class FileStorageService {
    */
   async batchOperation(
     operation: FileBatchOperation
-  ): Promise<{ success: number; failed: number; errors: string[] }> {
-    const results = { success: 0, failed: 0, errors: [] }
+  ): Promise<{ success: number; failed: number; errors: string[]; processed: number }> {
+    const results = { success: 0, failed: 0, errors: [], processed: 0 }
 
     for (const fileId of operation.fileIds) {
+      results.processed++
       try {
         switch (operation.action) {
           case 'delete':
