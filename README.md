@@ -68,7 +68,23 @@ cp .env.example .env
 
 5. 启动开发服务器：
 
+**方式一：一键启动前后端（推荐）**
+
 ```bash
+# 快速启动（在新窗口中启动前后端）
+.\start-dev.ps1
+
+# 或使用完整版本（在当前窗口中启动）
+.\scripts\start-all.ps1
+```
+
+**方式二：仅启动后端**
+
+```bash
+# 使用启动脚本（推荐）
+.\scripts\start.ps1
+
+# 或直接使用 npm
 npm run start:dev
 ```
 
@@ -195,11 +211,22 @@ curl -H "X-API-Key: your-api-key" \
 
 ### 脚本命令
 
+**NPM 脚本：**
+
 - `npm run start:dev` - 带热重载的开发服务器
 - `npm run build` - 构建生产版本
 - `npm run start:prod` - 启动生产服务器
 - `npm run test` - 运行测试
 - `npm run lint` - 代码检查
+
+**PowerShell 启动脚本：**
+
+- `.\start-dev.ps1` - 快速启动前后端（新窗口）
+- `.\scripts\start-all.ps1` - 完整启动前后端（当前窗口）
+- `.\scripts\start.ps1` - 仅启动后端服务
+- `.\scripts\start-redis.ps1` - 启动 Redis 缓存服务
+- `.\scripts\test-redis.ps1` - 测试 Redis 连接
+- `.\scripts\generate-api-keys.ps1` - 生成 API 密钥
 
 ### 项目结构
 

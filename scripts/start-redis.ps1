@@ -1,25 +1,25 @@
 # Redis启动脚本
 # 使用Docker启动Redis服务
 
-Write-Host "启动Redis服务..." -ForegroundColor Green
+Write-Host "Starting Redis service..." -ForegroundColor Green
 
 # 检查Docker是否安装
 try {
     docker --version | Out-Null
-    Write-Host "Docker已安装" -ForegroundColor Green
+    Write-Host "Docker is installed" -ForegroundColor Green
 } catch {
-    Write-Host "错误: Docker未安装或未启动" -ForegroundColor Red
-    Write-Host "请安装Docker Desktop: https://www.docker.com/products/docker-desktop" -ForegroundColor Yellow
+    Write-Host "Error: Docker is not installed or not running" -ForegroundColor Red
+    Write-Host "Please install Docker Desktop: https://www.docker.com/products/docker-desktop" -ForegroundColor Yellow
     exit 1
 }
 
 # 停止现有的Redis容器（如果存在）
-Write-Host "停止现有Redis容器..." -ForegroundColor Yellow
+Write-Host "Stopping existing Redis container..." -ForegroundColor Yellow
 docker stop file-service-redis 2>$null
 docker rm file-service-redis 2>$null
 
 # 启动新的Redis容器
-Write-Host "启动Redis容器..." -ForegroundColor Green
+Write-Host "Starting Redis container..." -ForegroundColor Green
 docker run -d `
     --name file-service-redis `
     -p 6379:6379 `
@@ -27,14 +27,14 @@ docker run -d `
     redis-server --appendonly yes
 
 if ($LASTEXITCODE -eq 0) {
-    Write-Host "Redis服务已启动!" -ForegroundColor Green
-    Write-Host "连接信息:" -ForegroundColor Cyan
-    Write-Host "  主机: localhost" -ForegroundColor White
-    Write-Host "  端口: 6379" -ForegroundColor White
-    Write-Host "  密码: 无" -ForegroundColor White
+    Write-Host "Redis service started successfully!" -ForegroundColor Green
+    Write-Host "Connection info:" -ForegroundColor Cyan
+    Write-Host "  Host: localhost" -ForegroundColor White
+    Write-Host "  Port: 6379" -ForegroundColor White
+    Write-Host "  Password: none" -ForegroundColor White
     Write-Host ""
-    Write-Host "要停止Redis服务，运行: docker stop file-service-redis" -ForegroundColor Yellow
+    Write-Host "To stop Redis service, run: docker stop file-service-redis" -ForegroundColor Yellow
 } else {
-    Write-Host "启动Redis失败!" -ForegroundColor Red
+    Write-Host "Failed to start Redis!" -ForegroundColor Red
     exit 1
 }
