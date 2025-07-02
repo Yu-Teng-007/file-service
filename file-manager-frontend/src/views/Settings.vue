@@ -325,13 +325,17 @@ const resetUploadConfig = () => {
   uploadForm.allowedTypes = ['*/*']
 }
 
-const handleThemeChange = (theme: string) => {
-  configStore.updateTheme(theme as any)
+const handleThemeChange = (theme: string | number | boolean | undefined) => {
+  if (typeof theme === 'string') {
+    configStore.updateTheme(theme as any)
+  }
 }
 
-const handleLanguageChange = (lang: string) => {
-  locale.value = lang
-  configStore.updateLanguage(lang as any)
+const handleLanguageChange = (lang: string | number | boolean | undefined) => {
+  if (typeof lang === 'string') {
+    locale.value = lang
+    configStore.updateLanguage(lang as any)
+  }
 }
 
 const resetAllSettings = async () => {
@@ -398,8 +402,8 @@ onMounted(() => {
   color: var(--el-text-color-regular);
 }
 
-.settings-content {
-  space-y: 20px;
+.settings-content > * + * {
+  margin-top: 20px;
 }
 
 .settings-card {
@@ -418,8 +422,8 @@ onMounted(() => {
   color: var(--el-text-color-secondary);
 }
 
-.system-info {
-  space-y: 12px;
+.system-info > * + * {
+  margin-top: 12px;
 }
 
 .info-item {
@@ -452,8 +456,8 @@ onMounted(() => {
   color: var(--el-color-danger);
 }
 
-.danger-actions {
-  space-y: 16px;
+.danger-actions > * + * {
+  margin-top: 16px;
 }
 
 .action-item {
