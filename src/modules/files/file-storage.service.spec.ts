@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config'
 import { NotFoundException, ConflictException } from '@nestjs/common'
 import { FileStorageService } from './file-storage.service'
 import { CDNService } from '../cdn/cdn.service'
-import { FileCategory, FileAccessLevel } from '../../types/file.types'
+import { FileCategory, FileAccessLevel, FileReadMode } from '../../types/file.types'
 import * as fs from 'fs'
 import * as path from 'path'
 
@@ -18,6 +18,7 @@ jest.mock('fs', () => ({
     writeFile: jest.fn(),
     unlink: jest.fn(),
     readdir: jest.fn(),
+    open: jest.fn(),
   },
   constants: {
     F_OK: 0,
@@ -634,6 +635,178 @@ describe('FileStorageService', () => {
       expect(result.success).toBe(1)
       expect(result.processed).toBe(2)
       expect(result.errors).toHaveLength(1)
+    })
+  })
+
+  describe('File Content Reading', () => {
+    beforeEach(() => {
+      // Set up file metadata for reading tests
+      ;(service as any).fileMetadata.set('test-read-id', {
+        id: 'test-read-id',
+        originalName: 'test.txt',
+        filename: 'test-read-id.txt',
+        path: 'test-uploads/documents/test-read-id.txt',
+        url: '/uploads/documents/test-read-id.txt',
+        category: FileCategory.DOCUMENT,
+        accessLevel: FileAccessLevel.PUBLIC,
+        size: 100,
+        mimeType: 'text/plain',
+        uploadedAt: '2023-01-01T00:00:00.000Z',
+      })
+    })
+
+    describe('readFileContent', () => {
+      it('should read full file content as buffer', async () => {
+        const testContent = Buffer.from('Hello, World!')
+        ;(fs.promises.access as jest.Mock).mockResolvedValue(undefined)
+        ;(fs.promises.stat as jest.Mock).mockResolvedValue({ size: 13 })
+        ;(fs.promises.readFile as jest.Mock).mockResolvedValue(testContent)
+
+        const result = await service.readFileContent('test-read-id', {
+          mode: FileReadMode.FULL,
+          encoding: 'buffer',
+        })
+
+        expect(result.content).toEqual(testContent)
+        expect(result.size).toBe(13)
+        expect(result.mimeType).toBe('text/plain')
+        expect(result.fromCache).toBe(false)
+        expect(typeof result.readTime).toBe('number')
+      })
+
+      it('should read full file content as text', async () => {
+        const testContent = 'Hello, World!'
+        ;(fs.promises.access as jest.Mock).mockResolvedValue(undefined)
+        ;(fs.promises.stat as jest.Mock).mockResolvedValue({ size: 13 })
+        ;(fs.promises.readFile as jest.Mock).mockResolvedValue(testContent)
+
+        const result = await service.readFileContent('test-read-id', {
+          mode: FileReadMode.FULL,
+          encoding: 'utf8',
+        })
+
+        expect(result.content).toBe(testContent)
+        expect(result.size).toBe(13)
+        expect(result.encoding).toBe('utf8')
+      })
+
+      it('should use cache when available', async () => {
+        const testContent = 'Cached content'
+
+        // Set up cache
+        ;(service as any).contentCache.set('test-read-id:full:buffer:0:end', {
+          content: testContent,
+          timestamp: Date.now(),
+          ttl: 300,
+        })
+
+        const result = await service.readFileContent('test-read-id', {
+          useCache: true,
+        })
+
+        expect(result.content).toBe(testContent)
+        expect(result.fromCache).toBe(true)
+        expect(fs.promises.readFile).not.toHaveBeenCalled()
+      })
+
+      it('should throw error for non-existent file', async () => {
+        await expect(service.readFileContent('non-existent-id')).rejects.toThrow(NotFoundException)
+      })
+
+      it('should throw error when file does not exist on disk', async () => {
+        ;(fs.promises.access as jest.Mock).mockRejectedValue(new Error('File not found'))
+
+        await expect(service.readFileContent('test-read-id')).rejects.toThrow(NotFoundException)
+      })
+    })
+
+    describe('readFileChunks', () => {
+      it('should read file in chunks', async () => {
+        const mockFileHandle = {
+          read: jest
+            .fn()
+            .mockResolvedValueOnce({ bytesRead: 5 })
+            .mockResolvedValueOnce({ bytesRead: 8 }),
+          close: jest.fn().mockResolvedValue(undefined),
+        }
+
+        ;(fs.promises.access as jest.Mock).mockResolvedValue(undefined)
+        ;(fs.promises.stat as jest.Mock).mockResolvedValue({ size: 13 })
+        ;(fs.promises.open as jest.Mock).mockResolvedValue(mockFileHandle)
+
+        const chunks = []
+        for await (const chunk of service.readFileChunks('test-read-id', {
+          chunkSize: 5,
+        })) {
+          chunks.push(chunk)
+        }
+
+        expect(chunks).toHaveLength(3) // 13 bytes / 5 = 3 chunks
+        expect(chunks[0].chunkIndex).toBe(0)
+        expect(chunks[0].isLast).toBe(false)
+        expect(chunks[2].isLast).toBe(true)
+      })
+    })
+
+    describe('cache management', () => {
+      it('should clean up expired cache entries', () => {
+        const now = Date.now()
+
+        // Add expired entry
+        ;(service as any).contentCache.set('expired-key', {
+          content: 'expired',
+          timestamp: now - 400 * 1000, // 400 seconds ago
+          ttl: 300, // 5 minutes TTL
+        })
+
+        // Add valid entry
+        ;(service as any).contentCache.set('valid-key', {
+          content: 'valid',
+          timestamp: now - 100 * 1000, // 100 seconds ago
+          ttl: 300,
+        })
+        ;(service as any).cleanupExpiredCache()
+
+        expect((service as any).contentCache.has('expired-key')).toBe(false)
+        expect((service as any).contentCache.has('valid-key')).toBe(true)
+      })
+
+      it('should clear all cache', () => {
+        ;(service as any).contentCache.set('test-key', {
+          content: 'test',
+          timestamp: Date.now(),
+          ttl: 300,
+        })
+
+        service.clearContentCache()
+
+        expect((service as any).contentCache.size).toBe(0)
+      })
+
+      it('should return cache info', () => {
+        ;(service as any).contentCache.set('test-key', {
+          content: 'test',
+          timestamp: Date.now(),
+          ttl: 300,
+        })
+
+        const info = service.getCacheInfo()
+
+        expect(info.size).toBe(1)
+        expect(info.keys).toContain('test-key')
+      })
+    })
+
+    describe('getReadStats', () => {
+      it('should return read statistics', () => {
+        const stats = service.getReadStats()
+
+        expect(stats).toHaveProperty('totalReads')
+        expect(stats).toHaveProperty('cacheHits')
+        expect(stats).toHaveProperty('cacheMisses')
+        expect(stats).toHaveProperty('averageReadTime')
+        expect(stats).toHaveProperty('totalBytesRead')
+      })
     })
   })
 })

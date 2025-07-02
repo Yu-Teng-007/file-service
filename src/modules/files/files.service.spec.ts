@@ -6,7 +6,7 @@ import { FileValidationService } from './file-validation.service'
 import { FileStorageService } from './file-storage.service'
 import { CacheService } from '../cache/cache.service'
 import { ErrorRecoveryService } from '../../common/services/error-recovery.service'
-import { FileCategory, FileAccessLevel } from '../../types/file.types'
+import { FileCategory, FileAccessLevel, FileReadMode } from '../../types/file.types'
 import { FileUploadDto, FileUpdateDto, FileBatchOperationDto } from '../../types/dto'
 
 describe('FilesService', () => {
@@ -59,6 +59,10 @@ describe('FilesService', () => {
       deleteFile: jest.fn(),
       searchFiles: jest.fn(),
       batchOperation: jest.fn(),
+      readFileContent: jest.fn(),
+      readFileChunks: jest.fn(),
+      getReadStats: jest.fn(),
+      clearContentCache: jest.fn(),
     }
 
     const mockCacheService = {
@@ -393,6 +397,182 @@ describe('FilesService', () => {
         fileIds: ['id1', 'id2'],
         targetCategory: undefined,
         targetAccessLevel: undefined,
+      })
+    })
+  })
+
+  describe('File Content Reading', () => {
+    describe('readFileContent', () => {
+      it('should read file content successfully', async () => {
+        const mockResult = {
+          content: 'Hello, World!',
+          size: 13,
+          mimeType: 'text/plain',
+          encoding: 'utf8' as BufferEncoding,
+          fromCache: false,
+          readTime: 10,
+        }
+
+        storageService.readFileContent.mockResolvedValue(mockResult)
+
+        const result = await service.readFileContent('test-id', {
+          mode: FileReadMode.FULL,
+          encoding: 'utf8',
+        })
+
+        expect(result).toEqual(mockResult)
+        expect(storageService.readFileContent).toHaveBeenCalledWith('test-id', {
+          mode: FileReadMode.FULL,
+          encoding: 'utf8',
+        })
+      })
+
+      it('should handle file not found error', async () => {
+        storageService.readFileContent.mockRejectedValue(new Error('文件不存在'))
+
+        await expect(service.readFileContent('non-existent-id')).rejects.toThrow('文件不存在')
+      })
+    })
+
+    describe('readTextFile', () => {
+      it('should read text file content', async () => {
+        const mockResult = {
+          content: 'Hello, World!',
+          size: 13,
+          mimeType: 'text/plain',
+          encoding: 'utf8' as BufferEncoding,
+          fromCache: false,
+          readTime: 10,
+        }
+
+        storageService.readFileContent.mockResolvedValue(mockResult)
+
+        const result = await service.readTextFile('test-id', 'utf8')
+
+        expect(result).toBe('Hello, World!')
+        expect(storageService.readFileContent).toHaveBeenCalledWith('test-id', {
+          encoding: 'utf8',
+        })
+      })
+
+      it('should throw error for non-text content', async () => {
+        const mockResult = {
+          content: Buffer.from('binary data'),
+          size: 11,
+          mimeType: 'application/octet-stream',
+          fromCache: false,
+          readTime: 10,
+        }
+
+        storageService.readFileContent.mockResolvedValue(mockResult)
+
+        await expect(service.readTextFile('test-id')).rejects.toThrow('文件内容不是文本格式')
+      })
+    })
+
+    describe('readJsonFile', () => {
+      it('should read and parse JSON file', async () => {
+        const jsonData = { name: 'test', value: 123 }
+        const mockResult = {
+          content: JSON.stringify(jsonData),
+          size: 25,
+          mimeType: 'application/json',
+          encoding: 'utf8' as BufferEncoding,
+          fromCache: false,
+          readTime: 10,
+        }
+
+        storageService.readFileContent.mockResolvedValue(mockResult)
+
+        const result = await service.readJsonFile('test-id')
+
+        expect(result).toEqual(jsonData)
+      })
+
+      it('should throw error for invalid JSON', async () => {
+        const mockResult = {
+          content: 'invalid json {',
+          size: 14,
+          mimeType: 'application/json',
+          encoding: 'utf8' as BufferEncoding,
+          fromCache: false,
+          readTime: 10,
+        }
+
+        storageService.readFileContent.mockResolvedValue(mockResult)
+
+        await expect(service.readJsonFile('test-id')).rejects.toThrow('JSON文件解析失败')
+      })
+    })
+
+    describe('readFileChunks', () => {
+      it('should read file in chunks', async () => {
+        const mockChunks = [
+          {
+            chunk: 'Hello',
+            chunkIndex: 0,
+            totalChunks: 3,
+            isLast: false,
+            size: 5,
+            offset: 0,
+          },
+          {
+            chunk: ', Wor',
+            chunkIndex: 1,
+            totalChunks: 3,
+            isLast: false,
+            size: 5,
+            offset: 5,
+          },
+          {
+            chunk: 'ld!',
+            chunkIndex: 2,
+            totalChunks: 3,
+            isLast: true,
+            size: 3,
+            offset: 10,
+          },
+        ]
+
+        storageService.readFileChunks.mockImplementation(async function* () {
+          for (const chunk of mockChunks) {
+            yield chunk
+          }
+        })
+
+        const chunks = []
+        for await (const chunk of service.readFileChunks('test-id', { chunkSize: 5 })) {
+          chunks.push(chunk)
+        }
+
+        expect(chunks).toEqual(mockChunks)
+      })
+    })
+
+    describe('getFileReadStats', () => {
+      it('should return read statistics', () => {
+        const mockStats = {
+          totalReads: 10,
+          cacheHits: 3,
+          cacheMisses: 7,
+          averageReadTime: 15.5,
+          totalBytesRead: 1024,
+        }
+
+        storageService.getReadStats.mockReturnValue(mockStats)
+
+        const result = service.getFileReadStats()
+
+        expect(result).toEqual(mockStats)
+        expect(storageService.getReadStats).toHaveBeenCalled()
+      })
+    })
+
+    describe('clearFileContentCache', () => {
+      it('should clear content cache', () => {
+        service.clearFileContentCache()
+
+        expect(storageService.clearContentCache).toHaveBeenCalled()
       })
     })
   })

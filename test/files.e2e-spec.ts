@@ -61,9 +61,13 @@ describe('Files (e2e)', () => {
     it('should upload a single image file', async () => {
       // 创建测试图片文件
       const testImageBuffer = Buffer.from([
-        0xff, 0xd8, 0xff, 0xe0, // JPEG signature
+        0xff,
+        0xd8,
+        0xff,
+        0xe0, // JPEG signature
         ...Array(100).fill(0x00), // Dummy data
-        0xff, 0xd9, // JPEG end marker
+        0xff,
+        0xd9, // JPEG end marker
       ])
 
       const response = await request(app.getHttpServer())
@@ -91,8 +95,24 @@ describe('Files (e2e)', () => {
     })
 
     it('should upload multiple files', async () => {
-      const testImageBuffer1 = Buffer.from([0xff, 0xd8, 0xff, 0xe0, ...Array(50).fill(0x00), 0xff, 0xd9])
-      const testImageBuffer2 = Buffer.from([0xff, 0xd8, 0xff, 0xe0, ...Array(60).fill(0x00), 0xff, 0xd9])
+      const testImageBuffer1 = Buffer.from([
+        0xff,
+        0xd8,
+        0xff,
+        0xe0,
+        ...Array(50).fill(0x00),
+        0xff,
+        0xd9,
+      ])
+      const testImageBuffer2 = Buffer.from([
+        0xff,
+        0xd8,
+        0xff,
+        0xe0,
+        ...Array(60).fill(0x00),
+        0xff,
+        0xd9,
+      ])
 
       const response = await request(app.getHttpServer())
         .post('/api/files/upload/multiple')
@@ -150,7 +170,15 @@ describe('Files (e2e)', () => {
     })
 
     it('should upload with custom metadata', async () => {
-      const testImageBuffer = Buffer.from([0xff, 0xd8, 0xff, 0xe0, ...Array(100).fill(0x00), 0xff, 0xd9])
+      const testImageBuffer = Buffer.from([
+        0xff,
+        0xd8,
+        0xff,
+        0xe0,
+        ...Array(100).fill(0x00),
+        0xff,
+        0xd9,
+      ])
       const metadata = JSON.stringify({ author: 'test-user', tags: ['test', 'image'] })
 
       const response = await request(app.getHttpServer())
@@ -173,7 +201,15 @@ describe('Files (e2e)', () => {
 
     beforeEach(async () => {
       // 上传一个测试文件
-      const testImageBuffer = Buffer.from([0xff, 0xd8, 0xff, 0xe0, ...Array(100).fill(0x00), 0xff, 0xd9])
+      const testImageBuffer = Buffer.from([
+        0xff,
+        0xd8,
+        0xff,
+        0xe0,
+        ...Array(100).fill(0x00),
+        0xff,
+        0xd9,
+      ])
 
       const uploadResponse = await request(app.getHttpServer())
         .post('/api/files/upload')
@@ -210,7 +246,9 @@ describe('Files (e2e)', () => {
         .query({ category: FileCategory.IMAGE })
         .expect(200)
 
-      expect(response.body.data.files.every(file => file.category === FileCategory.IMAGE)).toBe(true)
+      expect(response.body.data.files.every(file => file.category === FileCategory.IMAGE)).toBe(
+        true
+      )
     })
 
     it('should search files by filename', async () => {
@@ -219,7 +257,9 @@ describe('Files (e2e)', () => {
         .query({ filename: 'test-for-get' })
         .expect(200)
 
-      expect(response.body.data.files.some(file => file.filename.includes('test-for-get'))).toBe(true)
+      expect(response.body.data.files.some(file => file.filename.includes('test-for-get'))).toBe(
+        true
+      )
     })
 
     it('should get file by ID', async () => {
@@ -253,7 +293,15 @@ describe('Files (e2e)', () => {
     let uploadedFileId: string
 
     beforeEach(async () => {
-      const testImageBuffer = Buffer.from([0xff, 0xd8, 0xff, 0xe0, ...Array(100).fill(0x00), 0xff, 0xd9])
+      const testImageBuffer = Buffer.from([
+        0xff,
+        0xd8,
+        0xff,
+        0xe0,
+        ...Array(100).fill(0x00),
+        0xff,
+        0xd9,
+      ])
 
       const uploadResponse = await request(app.getHttpServer())
         .post('/api/files/upload')
@@ -305,7 +353,15 @@ describe('Files (e2e)', () => {
     let uploadedFileId: string
 
     beforeEach(async () => {
-      const testImageBuffer = Buffer.from([0xff, 0xd8, 0xff, 0xe0, ...Array(100).fill(0x00), 0xff, 0xd9])
+      const testImageBuffer = Buffer.from([
+        0xff,
+        0xd8,
+        0xff,
+        0xe0,
+        ...Array(100).fill(0x00),
+        0xff,
+        0xd9,
+      ])
 
       const uploadResponse = await request(app.getHttpServer())
         .post('/api/files/upload')
@@ -327,9 +383,7 @@ describe('Files (e2e)', () => {
       })
 
       // 验证文件已被删除
-      await request(app.getHttpServer())
-        .get(`/api/files/${uploadedFileId}`)
-        .expect(404)
+      await request(app.getHttpServer()).get(`/api/files/${uploadedFileId}`).expect(404)
     })
   })
 
@@ -338,7 +392,15 @@ describe('Files (e2e)', () => {
 
     beforeEach(async () => {
       fileIds = []
-      const testImageBuffer = Buffer.from([0xff, 0xd8, 0xff, 0xe0, ...Array(100).fill(0x00), 0xff, 0xd9])
+      const testImageBuffer = Buffer.from([
+        0xff,
+        0xd8,
+        0xff,
+        0xe0,
+        ...Array(100).fill(0x00),
+        0xff,
+        0xd9,
+      ])
 
       // 上传多个测试文件
       for (let i = 0; i < 3; i++) {
@@ -373,15 +435,11 @@ describe('Files (e2e)', () => {
 
       // 验证文件已被删除
       for (const fileId of fileIds.slice(0, 2)) {
-        await request(app.getHttpServer())
-          .get(`/api/files/${fileId}`)
-          .expect(404)
+        await request(app.getHttpServer()).get(`/api/files/${fileId}`).expect(404)
       }
 
       // 验证第三个文件仍然存在
-      await request(app.getHttpServer())
-        .get(`/api/files/${fileIds[2]}`)
-        .expect(200)
+      await request(app.getHttpServer()).get(`/api/files/${fileIds[2]}`).expect(200)
     })
 
     it('should perform batch access level update', async () => {
@@ -411,9 +469,7 @@ describe('Files (e2e)', () => {
 
   describe('/api/files/stats (GET)', () => {
     it('should return file statistics', async () => {
-      const response = await request(app.getHttpServer())
-        .get('/api/files/stats')
-        .expect(200)
+      const response = await request(app.getHttpServer()).get('/api/files/stats').expect(200)
 
       expect(response.body).toMatchObject({
         success: true,
@@ -423,6 +479,209 @@ describe('Files (e2e)', () => {
           categoryBreakdown: expect.any(Object),
           recentUploads: expect.any(Array),
         },
+      })
+    })
+  })
+
+  describe('File Content Reading (e2e)', () => {
+    let uploadedFileId: string
+    let textFileId: string
+    let jsonFileId: string
+
+    beforeEach(async () => {
+      // Upload a test image file
+      const testImageBuffer = Buffer.from([
+        0xff,
+        0xd8,
+        0xff,
+        0xe0,
+        ...Array(100).fill(0x00),
+        0xff,
+        0xd9,
+      ])
+      const imageResponse = await request(app.getHttpServer())
+        .post('/api/files/upload')
+        .attach('file', testImageBuffer, 'test-image.jpg')
+        .field('category', FileCategory.IMAGE)
+        .field('accessLevel', FileAccessLevel.PUBLIC)
+
+      uploadedFileId = imageResponse.body.data.id
+
+      // Upload a test text file
+      const testTextBuffer = Buffer.from('Hello, World!\nThis is a test file.')
+      const textResponse = await request(app.getHttpServer())
+        .post('/api/files/upload')
+        .attach('file', testTextBuffer, 'test.txt')
+        .field('category', FileCategory.DOCUMENT)
+        .field('accessLevel', FileAccessLevel.PUBLIC)
+
+      textFileId = textResponse.body.data.id
+
+      // Upload a test JSON file
+      const testJsonData = { name: 'test', value: 123, items: ['a', 'b', 'c'] }
+      const testJsonBuffer = Buffer.from(JSON.stringify(testJsonData, null, 2))
+      const jsonResponse = await request(app.getHttpServer())
+        .post('/api/files/upload')
+        .attach('file', testJsonBuffer, 'test.json')
+        .field('category', FileCategory.SCRIPT)
+        .field('accessLevel', FileAccessLevel.PUBLIC)
+
+      jsonFileId = jsonResponse.body.data.id
+    })
+
+    describe('/api/files/:id/content (GET)', () => {
+      it('should read file content as buffer', async () => {
+        const response = await request(app.getHttpServer())
+          .get(`/api/files/${uploadedFileId}/content`)
+          .query({ mode: 'full', encoding: 'buffer' })
+          .expect(200)
+
+        expect(response.body).toMatchObject({
+          success: true,
+          message: '文件内容读取成功',
+          data: {
+            content: expect.any(String), // base64 encoded
+            size: expect.any(Number),
+            mimeType: 'image/jpeg',
+            fromCache: expect.any(Boolean),
+            readTime: expect.any(Number),
+          },
+        })
+      })
+
+      it('should read partial file content', async () => {
+        const response = await request(app.getHttpServer())
+          .get(`/api/files/${textFileId}/content`)
+          .query({ mode: 'partial', encoding: 'utf8', start: 0, end: 12 })
+          .expect(200)
+
+        expect(response.body).toMatchObject({
+          success: true,
+          data: {
+            content: 'Hello, World!',
+            size: 13,
+            encoding: 'utf8',
+          },
+        })
+      })
+
+      it('should return 404 for non-existent file', async () => {
+        const nonExistentId = '00000000-0000-0000-0000-000000000000'
+
+        await request(app.getHttpServer()).get(`/api/files/${nonExistentId}/content`).expect(404)
+      })
+
+      it('should validate parameters for partial read', async () => {
+        await request(app.getHttpServer())
+          .get(`/api/files/${textFileId}/content`)
+          .query({ mode: 'partial' }) // missing start parameter
+          .expect(400)
+      })
+    })
+
+    describe('/api/files/:id/text (GET)', () => {
+      it('should read text file content', async () => {
+        const response = await request(app.getHttpServer())
+          .get(`/api/files/${textFileId}/text`)
+          .query({ encoding: 'utf8' })
+          .expect(200)
+
+        expect(response.body).toMatchObject({
+          success: true,
+          message: '文本内容读取成功',
+          data: 'Hello, World!\nThis is a test file.',
+        })
+      })
+
+      it('should handle different encodings', async () => {
+        const response = await request(app.getHttpServer())
+          .get(`/api/files/${textFileId}/text`)
+          .query({ encoding: 'ascii' })
+          .expect(200)
+
+        expect(response.body.success).toBe(true)
+        expect(typeof response.body.data).toBe('string')
+      })
+
+      it('should return 400 for binary files', async () => {
+        await request(app.getHttpServer()).get(`/api/files/${uploadedFileId}/text`).expect(400)
+      })
+    })
+
+    describe('/api/files/:id/json (GET)', () => {
+      it('should read and parse JSON file', async () => {
+        const response = await request(app.getHttpServer())
+          .get(`/api/files/${jsonFileId}/json`)
+          .expect(200)
+
+        expect(response.body).toMatchObject({
+          success: true,
+          message: 'JSON内容读取成功',
+          data: {
+            name: 'test',
+            value: 123,
+            items: ['a', 'b', 'c'],
+          },
+        })
+      })
+
+      it('should return 400 for invalid JSON', async () => {
+        await request(app.getHttpServer()).get(`/api/files/${textFileId}/json`).expect(400)
+      })
+    })
+
+    describe('/api/files/stats/read (GET)', () => {
+      it('should return file read statistics', async () => {
+        // Perform some reads first
+        await request(app.getHttpServer()).get(`/api/files/${textFileId}/text`).expect(200)
+
+        const response = await request(app.getHttpServer()).get('/api/files/stats/read').expect(200)
+
+        expect(response.body).toMatchObject({
+          success: true,
+          message: '统计信息获取成功',
+          data: {
+            totalReads: expect.any(Number),
+            cacheHits: expect.any(Number),
+            cacheMisses: expect.any(Number),
+            averageReadTime: expect.any(Number),
+            totalBytesRead: expect.any(Number),
+          },
+        })
+      })
+    })
+
+    describe('/api/files/cache/content (DELETE)', () => {
+      it('should clear file content cache', async () => {
+        const response = await request(app.getHttpServer())
+          .delete('/api/files/cache/content')
+          .expect(200)
+
+        expect(response.body).toMatchObject({
+          success: true,
+          message: '文件内容缓存已清空',
+        })
+      })
+    })
+
+    describe('Caching behavior', () => {
+      it('should use cache on subsequent reads', async () => {
+        // First read
+        const response1 = await request(app.getHttpServer())
+          .get(`/api/files/${textFileId}/content`)
+          .query({ encoding: 'utf8' })
+          .expect(200)
+
+        expect(response1.body.data.fromCache).toBe(false)
+
+        // Second read should use cache
+        const response2 = await request(app.getHttpServer())
+          .get(`/api/files/${textFileId}/content`)
+          .query({ encoding: 'utf8' })
+          .expect(200)
+
+        expect(response2.body.data.fromCache).toBe(true)
+        expect(response2.body.data.content).toBe(response1.body.data.content)
       })
     })
   })

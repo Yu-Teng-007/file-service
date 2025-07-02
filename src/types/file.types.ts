@@ -91,6 +91,52 @@ export interface FileStats {
   accessLevelCounts: Record<FileAccessLevel, number>
 }
 
+// 文件内容读取相关类型定义
+export enum FileReadMode {
+  FULL = 'full', // 完整读取到内存
+  STREAM = 'stream', // 流式读取
+  CHUNK = 'chunk', // 分块读取
+  PARTIAL = 'partial', // 部分读取
+}
+
+export interface FileReadOptions {
+  mode?: FileReadMode
+  encoding?: BufferEncoding | 'buffer' // 文本编码或返回Buffer
+  start?: number // 读取起始位置（字节）
+  end?: number // 读取结束位置（字节）
+  chunkSize?: number // 分块大小（字节）
+  maxSize?: number // 最大读取大小限制
+  useCache?: boolean // 是否使用缓存
+  cacheKey?: string // 自定义缓存键
+  cacheTTL?: number // 缓存过期时间（秒）
+}
+
+export interface FileContentResult {
+  content: Buffer | string
+  size: number
+  mimeType: string
+  encoding?: BufferEncoding
+  fromCache?: boolean
+  readTime: number // 读取耗时（毫秒）
+}
+
+export interface FileChunkResult {
+  chunk: Buffer | string
+  chunkIndex: number
+  totalChunks: number
+  isLast: boolean
+  size: number
+  offset: number
+}
+
+export interface FileReadStats {
+  totalReads: number
+  cacheHits: number
+  cacheMisses: number
+  averageReadTime: number
+  totalBytesRead: number
+}
+
 // File type configurations
 export const FILE_TYPE_CONFIGS: Record<string, FileTypeConfig> = {
   // Images

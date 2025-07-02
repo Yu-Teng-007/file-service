@@ -15,6 +15,7 @@ import {
   Res,
   Header,
   StreamableFile,
+  BadRequestException,
 } from '@nestjs/common'
 import { Response } from 'express'
 import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express'
@@ -345,6 +346,194 @@ export class FilesController {
     })
 
     return stream
+  }
+
+  @Get(':id/content')
+  @UseInterceptors(CacheInterceptor)
+  @Cacheable('file-content:${id}:${mode}:${encoding}:${start}:${end}', 300, ['file-content'])
+  @ApiOperation({ summary: '读取文件内容', description: '根据文件ID读取文件内容到内存' })
+  @ApiParam({ name: 'id', description: '文件ID' })
+  @ApiQuery({ name: 'mode', description: '读取模式', enum: ['full', 'partial'], required: false })
+  @ApiQuery({ name: 'encoding', description: '文本编码', required: false })
+  @ApiQuery({ name: 'start', description: '起始位置（字节）', type: Number, required: false })
+  @ApiQuery({ name: 'end', description: '结束位置（字节）', type: Number, required: false })
+  @ApiQuery({ name: 'maxSize', description: '最大读取大小（字节）', type: Number, required: false })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: '文件内容读取成功',
+    schema: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean' },
+        message: { type: 'string' },
+        data: {
+          type: 'object',
+          properties: {
+            content: { type: 'string', description: '文件内容（文本）或base64编码（二进制）' },
+            size: { type: 'number', description: '内容大小（字节）' },
+            mimeType: { type: 'string', description: 'MIME类型' },
+            encoding: { type: 'string', description: '文本编码' },
+            fromCache: { type: 'boolean', description: '是否来自缓存' },
+            readTime: { type: 'number', description: '读取耗时（毫秒）' },
+          },
+        },
+      },
+    },
+  })
+  @ApiResponse({ status: HttpStatus.NOT_FOUND, description: '文件不存在' })
+  @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: '参数错误' })
+  async getFileContent(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Query('mode') mode?: 'full' | 'partial',
+    @Query('encoding') encoding?: string,
+    @Query('start') start?: number,
+    @Query('end') end?: number,
+    @Query('maxSize') maxSize?: number
+  ) {
+    // 验证参数
+    if (mode === 'partial' && (start === undefined || start < 0)) {
+      throw new BadRequestException('部分读取模式需要指定有效的起始位置')
+    }
+
+    if (end !== undefined && start !== undefined && end <= start) {
+      throw new BadRequestException('结束位置必须大于起始位置')
+    }
+
+    const options = {
+      mode: mode as any,
+      encoding: encoding === 'buffer' ? ('buffer' as const) : (encoding as BufferEncoding),
+      start,
+      end,
+      maxSize,
+    }
+
+    const result = await this.filesService.readFileContent(id, options)
+
+    // 如果是二进制内容，转换为base64
+    let content = result.content
+    if (Buffer.isBuffer(content)) {
+      content = content.toString('base64')
+    }
+
+    return {
+      success: true,
+      message: '文件内容读取成功',
+      data: {
+        ...result,
+        content,
+      },
+    }
+  }
+
+  @Get(':id/text')
+  @UseInterceptors(CacheInterceptor)
+  @Cacheable('file-text:${id}:${encoding}', 600, ['file-content'])
+  @ApiOperation({ summary: '读取文本文件内容', description: '读取文本文件内容并返回字符串' })
+  @ApiParam({ name: 'id', description: '文件ID' })
+  @ApiQuery({ name: 'encoding', description: '文本编码', required: false, example: 'utf8' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: '文本内容读取成功',
+    schema: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean' },
+        message: { type: 'string' },
+        data: { type: 'string', description: '文本内容' },
+      },
+    },
+  })
+  @ApiResponse({ status: HttpStatus.NOT_FOUND, description: '文件不存在' })
+  @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: '文件不是文本格式' })
+  async getTextFileContent(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Query('encoding') encoding: BufferEncoding = 'utf8'
+  ) {
+    const content = await this.filesService.readTextFile(id, encoding)
+
+    return {
+      success: true,
+      message: '文本内容读取成功',
+      data: content,
+    }
+  }
+
+  @Get(':id/json')
+  @UseInterceptors(CacheInterceptor)
+  @Cacheable('file-json:${id}', 600, ['file-content'])
+  @ApiOperation({ summary: '读取JSON文件内容', description: '读取JSON文件内容并解析为对象' })
+  @ApiParam({ name: 'id', description: '文件ID' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'JSON内容读取成功',
+    schema: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean' },
+        message: { type: 'string' },
+        data: { type: 'object', description: 'JSON对象' },
+      },
+    },
+  })
+  @ApiResponse({ status: HttpStatus.NOT_FOUND, description: '文件不存在' })
+  @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: 'JSON解析失败' })
+  async getJsonFileContent(@Param('id', ParseUUIDPipe) id: string) {
+    const content = await this.filesService.readJsonFile(id)
+
+    return {
+      success: true,
+      message: 'JSON内容读取成功',
+      data: content,
+    }
+  }
+
+  @Get('stats/read')
+  @ApiOperation({ summary: '获取文件读取统计', description: '获取文件读取操作的统计信息' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: '统计信息获取成功',
+    schema: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean' },
+        message: { type: 'string' },
+        data: {
+          type: 'object',
+          properties: {
+            totalReads: { type: 'number', description: '总读取次数' },
+            cacheHits: { type: 'number', description: '缓存命中次数' },
+            cacheMisses: { type: 'number', description: '缓存未命中次数' },
+            averageReadTime: { type: 'number', description: '平均读取时间（毫秒）' },
+            totalBytesRead: { type: 'number', description: '总读取字节数' },
+          },
+        },
+      },
+    },
+  })
+  async getFileReadStats() {
+    const stats = this.filesService.getFileReadStats()
+
+    return {
+      success: true,
+      message: '统计信息获取成功',
+      data: stats,
+    }
+  }
+
+  @Delete('cache/content')
+  @CacheEvict(['file-content', 'file-text', 'file-json'])
+  @ApiOperation({ summary: '清空文件内容缓存', description: '清空所有文件内容缓存' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: '缓存清空成功',
+  })
+  async clearFileContentCache() {
+    this.filesService.clearFileContentCache()
+
+    return {
+      success: true,
+      message: '文件内容缓存已清空',
+    }
   }
 
   @Get(':id/thumbnail')

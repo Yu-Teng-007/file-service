@@ -13,6 +13,11 @@ import {
   FileSearchQuery,
   FileBatchOperation,
   FileStats,
+  FileReadMode,
+  FileReadOptions,
+  FileContentResult,
+  FileChunkResult,
+  FileReadStats,
 } from '../../types/file.types'
 
 interface StoredFileMetadata {
@@ -36,11 +41,25 @@ export class FileStorageService {
   private readonly uploadDir: string
   private readonly metadataFile: string
   private fileMetadata: Map<string, StoredFileMetadata> = new Map()
+  private readonly contentCache = new Map<
+    string,
+    { content: Buffer | string; timestamp: number; ttl: number }
+  >()
+  private readonly readStats: FileReadStats = {
+    totalReads: 0,
+    cacheHits: 0,
+    cacheMisses: 0,
+    averageReadTime: 0,
+    totalBytesRead: 0,
+  }
 
   constructor(private readonly configService: ConfigService) {
     this.uploadDir = this.configService.get<string>('UPLOAD_DIR') || 'uploads'
     this.metadataFile = join(this.uploadDir, 'metadata.json')
     this.initializeStorage()
+
+    // 定期清理过期缓存
+    setInterval(() => this.cleanupExpiredCache(), 5 * 60 * 1000) // 每5分钟清理一次
   }
 
   /**
@@ -476,6 +495,290 @@ export class FileStorageService {
       return true
     } catch {
       return false
+    }
+  }
+
+  /**
+   * 读取文件内容
+   */
+  async readFileContent(fileId: string, options: FileReadOptions = {}): Promise<FileContentResult> {
+    const startTime = Date.now()
+
+    // 获取文件信息
+    const fileInfo = this.fileMetadata.get(fileId)
+    if (!fileInfo) {
+      throw new NotFoundException('文件不存在')
+    }
+
+    // 验证文件路径安全性
+    this.validateFilePath(fileInfo.path)
+
+    // 检查文件是否存在
+    if (!(await this.fileExists(fileInfo.path))) {
+      throw new NotFoundException('文件不存在或已被删除')
+    }
+
+    const {
+      mode = FileReadMode.FULL,
+      encoding = 'buffer',
+      start = 0,
+      end,
+      maxSize = 100 * 1024 * 1024, // 默认最大100MB
+      useCache = true,
+      cacheKey,
+      cacheTTL = 300, // 默认缓存5分钟
+    } = options
+
+    // 生成缓存键
+    const finalCacheKey = cacheKey || `${fileId}:${mode}:${encoding}:${start}:${end || 'end'}`
+
+    // 检查缓存
+    if (useCache && this.contentCache.has(finalCacheKey)) {
+      const cached = this.contentCache.get(finalCacheKey)!
+      if (Date.now() - cached.timestamp < cached.ttl * 1000) {
+        this.readStats.cacheHits++
+        return {
+          content: cached.content,
+          size: Buffer.isBuffer(cached.content)
+            ? cached.content.length
+            : Buffer.byteLength(cached.content),
+          mimeType: fileInfo.mimeType,
+          encoding: encoding === 'buffer' ? undefined : (encoding as BufferEncoding),
+          fromCache: true,
+          readTime: Date.now() - startTime,
+        }
+      } else {
+        // 清理过期缓存
+        this.contentCache.delete(finalCacheKey)
+      }
+    }
+
+    this.readStats.cacheMisses++
+
+    try {
+      let content: Buffer | string
+      let actualSize: number
+
+      switch (mode) {
+        case FileReadMode.FULL:
+          content = await this.readFullContent(fileInfo.path, encoding, maxSize)
+          break
+        case FileReadMode.PARTIAL:
+          content = await this.readPartialContent(fileInfo.path, encoding, start, end, maxSize)
+          break
+        default:
+          throw new Error(`不支持的读取模式: ${mode}`)
+      }
+
+      actualSize = Buffer.isBuffer(content) ? content.length : Buffer.byteLength(content)
+
+      // 更新统计信息
+      this.readStats.totalReads++
+      this.readStats.totalBytesRead += actualSize
+      const readTime = Date.now() - startTime
+      this.readStats.averageReadTime =
+        (this.readStats.averageReadTime * (this.readStats.totalReads - 1) + readTime) /
+        this.readStats.totalReads
+
+      // 缓存结果
+      if (useCache && actualSize <= 10 * 1024 * 1024) {
+        // 只缓存小于10MB的文件
+        this.contentCache.set(finalCacheKey, {
+          content,
+          timestamp: Date.now(),
+          ttl: cacheTTL,
+        })
+      }
+
+      return {
+        content,
+        size: actualSize,
+        mimeType: fileInfo.mimeType,
+        encoding: encoding === 'buffer' ? undefined : (encoding as BufferEncoding),
+        fromCache: false,
+        readTime,
+      }
+    } catch (error) {
+      throw new Error(`读取文件内容失败: ${error.message}`)
+    }
+  }
+
+  /**
+   * 分块读取文件内容
+   */
+  async *readFileChunks(
+    fileId: string,
+    options: FileReadOptions = {}
+  ): AsyncGenerator<FileChunkResult, void, unknown> {
+    const fileInfo = this.fileMetadata.get(fileId)
+    if (!fileInfo) {
+      throw new NotFoundException('文件不存在')
+    }
+
+    this.validateFilePath(fileInfo.path)
+
+    if (!(await this.fileExists(fileInfo.path))) {
+      throw new NotFoundException('文件不存在或已被删除')
+    }
+
+    const {
+      encoding = 'buffer',
+      chunkSize = 64 * 1024, // 默认64KB
+      start = 0,
+      end,
+    } = options
+
+    const stats = await fs.stat(fileInfo.path)
+    const fileSize = stats.size
+    const actualEnd = end !== undefined ? Math.min(end, fileSize) : fileSize
+    const totalSize = actualEnd - start
+    const totalChunks = Math.ceil(totalSize / chunkSize)
+
+    let currentOffset = start
+    let chunkIndex = 0
+
+    while (currentOffset < actualEnd) {
+      const currentChunkSize = Math.min(chunkSize, actualEnd - currentOffset)
+      const chunk = await this.readPartialContent(
+        fileInfo.path,
+        encoding,
+        currentOffset,
+        currentOffset + currentChunkSize - 1
+      )
+
+      yield {
+        chunk,
+        chunkIndex,
+        totalChunks,
+        isLast: chunkIndex === totalChunks - 1,
+        size: Buffer.isBuffer(chunk) ? chunk.length : Buffer.byteLength(chunk),
+        offset: currentOffset,
+      }
+
+      currentOffset += currentChunkSize
+      chunkIndex++
+    }
+  }
+
+  /**
+   * 验证文件路径安全性
+   */
+  private validateFilePath(filePath: string): void {
+    // 检查路径是否在允许的目录内
+    const normalizedPath = join(process.cwd(), filePath).replace(/\\/g, '/')
+    const normalizedUploadDir = join(process.cwd(), this.uploadDir).replace(/\\/g, '/')
+
+    if (!normalizedPath.startsWith(normalizedUploadDir)) {
+      throw new Error('文件路径不在允许的目录范围内')
+    }
+
+    // 检查是否包含危险的路径遍历字符
+    if (filePath.includes('..') || filePath.includes('~')) {
+      throw new Error('文件路径包含非法字符')
+    }
+
+    // 检查路径长度
+    if (filePath.length > 260) {
+      // Windows路径长度限制
+      throw new Error('文件路径过长')
+    }
+  }
+
+  /**
+   * 完整读取文件内容
+   */
+  private async readFullContent(
+    filePath: string,
+    encoding: BufferEncoding | 'buffer',
+    maxSize: number
+  ): Promise<Buffer | string> {
+    // 检查文件大小
+    const stats = await fs.stat(filePath)
+    if (stats.size > maxSize) {
+      throw new Error(`文件大小 ${stats.size} 字节超过限制 ${maxSize} 字节`)
+    }
+
+    if (encoding === 'buffer') {
+      return await fs.readFile(filePath)
+    } else {
+      return await fs.readFile(filePath, encoding)
+    }
+  }
+
+  /**
+   * 部分读取文件内容
+   */
+  private async readPartialContent(
+    filePath: string,
+    encoding: BufferEncoding | 'buffer',
+    start: number,
+    end?: number,
+    maxSize?: number
+  ): Promise<Buffer | string> {
+    const stats = await fs.stat(filePath)
+    const fileSize = stats.size
+
+    // 验证读取范围
+    if (start < 0 || start >= fileSize) {
+      throw new Error(`起始位置 ${start} 超出文件范围 [0, ${fileSize}]`)
+    }
+
+    const actualEnd = end !== undefined ? Math.min(end, fileSize - 1) : fileSize - 1
+    const readSize = actualEnd - start + 1
+
+    if (maxSize && readSize > maxSize) {
+      throw new Error(`读取大小 ${readSize} 字节超过限制 ${maxSize} 字节`)
+    }
+
+    // 使用文件描述符进行部分读取
+    const fileHandle = await fs.open(filePath, 'r')
+    try {
+      const buffer = Buffer.alloc(readSize)
+      const { bytesRead } = await fileHandle.read(buffer, 0, readSize, start)
+
+      if (encoding === 'buffer') {
+        return buffer.slice(0, bytesRead)
+      } else {
+        return buffer.slice(0, bytesRead).toString(encoding)
+      }
+    } finally {
+      await fileHandle.close()
+    }
+  }
+
+  /**
+   * 清理过期缓存
+   */
+  private cleanupExpiredCache(): void {
+    const now = Date.now()
+    for (const [key, cached] of this.contentCache.entries()) {
+      if (now - cached.timestamp >= cached.ttl * 1000) {
+        this.contentCache.delete(key)
+      }
+    }
+  }
+
+  /**
+   * 获取文件读取统计信息
+   */
+  getReadStats(): FileReadStats {
+    return { ...this.readStats }
+  }
+
+  /**
+   * 清空文件内容缓存
+   */
+  clearContentCache(): void {
+    this.contentCache.clear()
+  }
+
+  /**
+   * 获取缓存信息
+   */
+  getCacheInfo(): { size: number; keys: string[] } {
+    return {
+      size: this.contentCache.size,
+      keys: Array.from(this.contentCache.keys()),
     }
   }
 }

@@ -5,6 +5,12 @@ import {
   FileProcessingException,
   UnsupportedFileTypeException,
 } from '../../common/exceptions/custom.exceptions'
+import {
+  FileReadOptions,
+  FileContentResult,
+  FileChunkResult,
+  FileReadStats,
+} from '../../types/file.types'
 import { Retry, FILE_OPERATION_RETRY_OPTIONS } from '../../common/utils/retry.util'
 import { ErrorRecoveryService } from '../../common/services/error-recovery.service'
 import { ConfigService } from '@nestjs/config'
@@ -305,6 +311,78 @@ export class FilesService {
 
     // 目前返回原图，未来可以集成图片处理服务生成真正的缩略图
     return this.getFileStream(id)
+  }
+
+  /**
+   * 读取文件内容
+   */
+  @Retry(FILE_OPERATION_RETRY_OPTIONS)
+  async readFileContent(id: string, options: FileReadOptions = {}): Promise<FileContentResult> {
+    try {
+      return await this.storageService.readFileContent(id, options)
+    } catch (error) {
+      if (error.message.includes('文件不存在')) {
+        throw new FileNotFoundException(id, error.message)
+      }
+      throw new FileProcessingException(`读取文件内容失败: ${error.message}`)
+    }
+  }
+
+  /**
+   * 分块读取文件内容
+   */
+  async *readFileChunks(
+    id: string,
+    options: FileReadOptions = {}
+  ): AsyncGenerator<FileChunkResult, void, unknown> {
+    try {
+      yield* this.storageService.readFileChunks(id, options)
+    } catch (error) {
+      if (error.message.includes('文件不存在')) {
+        throw new FileNotFoundException(id, error.message)
+      }
+      throw new FileProcessingException(`分块读取文件失败: ${error.message}`)
+    }
+  }
+
+  /**
+   * 读取文本文件内容
+   */
+  async readTextFile(id: string, encoding: BufferEncoding = 'utf8'): Promise<string> {
+    const result = await this.readFileContent(id, { encoding })
+
+    if (typeof result.content !== 'string') {
+      throw new FileProcessingException('文件内容不是文本格式')
+    }
+
+    return result.content
+  }
+
+  /**
+   * 读取JSON文件内容
+   */
+  async readJsonFile<T = any>(id: string): Promise<T> {
+    const content = await this.readTextFile(id, 'utf8')
+
+    try {
+      return JSON.parse(content)
+    } catch (error) {
+      throw new FileProcessingException(`JSON文件解析失败: ${error.message}`)
+    }
+  }
+
+  /**
+   * 获取文件读取统计信息
+   */
+  getFileReadStats(): FileReadStats {
+    return this.storageService.getReadStats()
+  }
+
+  /**
+   * 清空文件内容缓存
+   */
+  clearFileContentCache(): void {
+    this.storageService.clearContentCache()
   }
 
   /**
