@@ -1,0 +1,108 @@
+{
+  "common": {
+    "confirm": "Confirm",
+    "cancel": "Cancel",
+    "save": "Save",
+    "delete": "Delete",
+    "edit": "Edit",
+    "upload": "Upload",
+    "download": "Download",
+    "search": "Search",
+    "refresh": "Refresh",
+    "loading": "Loading...",
+    "success": "Success",
+    "error": "Error",
+    "warning": "Warning",
+    "info": "Info",
+    "total": "Total",
+    "selected": "Selected",
+    "all": "All",
+    "none": "None"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "fileList": "File List",
+    "upload": "Upload",
+    "settings": "Settings"
+  },
+  "file": {
+    "name": "Name",
+    "size": "Size",
+    "type": "Type",
+    "category": "Category",
+    "accessLevel": "Access Level",
+    "uploadTime": "Upload Time",
+    "actions": "Actions",
+    "preview": "Preview",
+    "rename": "Rename",
+    "move": "Move",
+    "copy": "Copy",
+    "properties": "Properties",
+    "uploadSuccess": "Upload successful",
+    "uploadFailed": "Upload failed",
+    "deleteSuccess": "Delete successful",
+    "deleteFailed": "Delete failed",
+    "deleteConfirm": "Are you sure to delete selected files?",
+    "batchDelete": "Batch Delete",
+    "selectFiles": "Select Files",
+    "dragToUpload": "Drag files here to upload",
+    "clickToUpload": "Click to select files",
+    "uploadProgress": "Upload Progress",
+    "categories": {
+      "images": "Images",
+      "scripts": "Scripts",
+      "styles": "Styles",
+      "fonts": "Fonts",
+      "documents": "Documents",
+      "music": "Music",
+      "videos": "Videos",
+      "archives": "Archives"
+    },
+    "accessLevels": {
+      "public": "Public",
+      "private": "Private",
+      "protected": "Protected"
+    }
+  },
+  "upload": {
+    "title": "File Upload",
+    "selectFiles": "Select Files",
+    "dragHere": "Drag files here",
+    "or": "or",
+    "clickToSelect": "Click to select",
+    "maxSize": "Max file size",
+    "allowedTypes": "Allowed file types",
+    "uploadQueue": "Upload Queue",
+    "startUpload": "Start Upload",
+    "pauseUpload": "Pause Upload",
+    "clearQueue": "Clear Queue",
+    "removeFile": "Remove File"
+  },
+  "settings": {
+    "title": "Settings",
+    "apiConfig": "API Configuration",
+    "apiBaseUrl": "API Base URL",
+    "apiKey": "API Key",
+    "uploadConfig": "Upload Configuration",
+    "maxFileSize": "Max File Size",
+    "allowedTypes": "Allowed File Types",
+    "appearance": "Appearance",
+    "theme": "Theme",
+    "language": "Language",
+    "themes": {
+      "light": "Light",
+      "dark": "Dark",
+      "auto": "Auto"
+    }
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "totalFiles": "Total Files",
+    "totalSize": "Total Size",
+    "diskUsage": "Disk Usage",
+    "recentFiles": "Recent Files",
+    "systemInfo": "System Info",
+    "version": "Version",
+    "uptime": "Uptime"
+  }
+}

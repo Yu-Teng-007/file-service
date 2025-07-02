@@ -1,0 +1,108 @@
+{
+  "common": {
+    "confirm": "确认",
+    "cancel": "取消",
+    "save": "保存",
+    "delete": "删除",
+    "edit": "编辑",
+    "upload": "上传",
+    "download": "下载",
+    "search": "搜索",
+    "refresh": "刷新",
+    "loading": "加载中...",
+    "success": "成功",
+    "error": "错误",
+    "warning": "警告",
+    "info": "信息",
+    "total": "总计",
+    "selected": "已选择",
+    "all": "全部",
+    "none": "无"
+  },
+  "nav": {
+    "dashboard": "仪表板",
+    "fileList": "文件列表",
+    "upload": "文件上传",
+    "settings": "系统设置"
+  },
+  "file": {
+    "name": "文件名",
+    "size": "大小",
+    "type": "类型",
+    "category": "分类",
+    "accessLevel": "访问级别",
+    "uploadTime": "上传时间",
+    "actions": "操作",
+    "preview": "预览",
+    "rename": "重命名",
+    "move": "移动",
+    "copy": "复制",
+    "properties": "属性",
+    "uploadSuccess": "上传成功",
+    "uploadFailed": "上传失败",
+    "deleteSuccess": "删除成功",
+    "deleteFailed": "删除失败",
+    "deleteConfirm": "确认删除选中的文件吗？",
+    "batchDelete": "批量删除",
+    "selectFiles": "选择文件",
+    "dragToUpload": "拖拽文件到此处上传",
+    "clickToUpload": "点击选择文件",
+    "uploadProgress": "上传进度",
+    "categories": {
+      "images": "图片",
+      "scripts": "脚本",
+      "styles": "样式",
+      "fonts": "字体",
+      "documents": "文档",
+      "music": "音频",
+      "videos": "视频",
+      "archives": "压缩包"
+    },
+    "accessLevels": {
+      "public": "公开",
+      "private": "私有",
+      "protected": "受保护"
+    }
+  },
+  "upload": {
+    "title": "文件上传",
+    "selectFiles": "选择文件",
+    "dragHere": "拖拽文件到此处",
+    "or": "或",
+    "clickToSelect": "点击选择",
+    "maxSize": "最大文件大小",
+    "allowedTypes": "支持的文件类型",
+    "uploadQueue": "上传队列",
+    "startUpload": "开始上传",
+    "pauseUpload": "暂停上传",
+    "clearQueue": "清空队列",
+    "removeFile": "移除文件"
+  },
+  "settings": {
+    "title": "系统设置",
+    "apiConfig": "API配置",
+    "apiBaseUrl": "API地址",
+    "apiKey": "API密钥",
+    "uploadConfig": "上传配置",
+    "maxFileSize": "最大文件大小",
+    "allowedTypes": "允许的文件类型",
+    "appearance": "外观设置",
+    "theme": "主题",
+    "language": "语言",
+    "themes": {
+      "light": "浅色",
+      "dark": "深色",
+      "auto": "跟随系统"
+    }
+  },
+  "dashboard": {
+    "title": "仪表板",
+    "totalFiles": "文件总数",
+    "totalSize": "总大小",
+    "diskUsage": "磁盘使用",
+    "recentFiles": "最近文件",
+    "systemInfo": "系统信息",
+    "version": "版本",
+    "uptime": "运行时间"
+  }
+}

@@ -1,0 +1,87 @@
+version: '3.8'
+
+services:
+  # 文件管理前端
+  file-manager-frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: file-manager-frontend
+    ports:
+      - "3000:80"
+    environment:
+      - NODE_ENV=production
+    restart: unless-stopped
+    networks:
+      - file-manager-network
+    depends_on:
+      - file-service-backend
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.file-manager.rule=Host(`file-manager.localhost`)"
+      - "traefik.http.services.file-manager.loadbalancer.server.port=80"
+
+  # 文件服务后端（假设后端也使用 Docker）
+  file-service-backend:
+    image: file-service:latest  # 替换为实际的后端镜像
+    container_name: file-service-backend
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - API_KEY=your-production-api-key
+      - UPLOAD_DIR=/app/uploads
+      - MAX_FILE_SIZE=104857600
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    volumes:
+      - file-uploads:/app/uploads
+      - file-temp:/app/temp
+    restart: unless-stopped
+    networks:
+      - file-manager-network
+    depends_on:
+      - redis
+
+  # Redis 缓存
+  redis:
+    image: redis:7-alpine
+    container_name: file-manager-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+    networks:
+      - file-manager-network
+    command: redis-server --appendonly yes
+
+  # Nginx 反向代理（可选）
+  nginx-proxy:
+    image: nginx:alpine
+    container_name: file-manager-proxy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx-proxy.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro  # SSL 证书目录
+    restart: unless-stopped
+    networks:
+      - file-manager-network
+    depends_on:
+      - file-manager-frontend
+      - file-service-backend
+
+volumes:
+  file-uploads:
+    driver: local
+  file-temp:
+    driver: local
+  redis-data:
+    driver: local
+
+networks:
+  file-manager-network:
+    driver: bridge
