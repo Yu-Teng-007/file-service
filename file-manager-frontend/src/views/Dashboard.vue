@@ -118,7 +118,7 @@
         <template #header>
           <div class="card-header">
             <span>{{ $t('dashboard.recentFiles') }}</span>
-            <el-button size="small" text @click="$router.push('/files')"> 查看全部 </el-button>
+            <el-button size="small" text @click="$router.push('/files')">查看全部</el-button>
           </div>
         </template>
 
@@ -145,7 +145,7 @@
             </div>
 
             <div class="file-actions">
-              <el-button size="small" text @click="previewFile(file)"> 预览 </el-button>
+              <el-button size="small" text @click="previewFile(file)">预览</el-button>
             </div>
           </div>
 
@@ -161,7 +161,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { useI18n } from 'vue-i18n'
+
 import {
   Folder,
   DataBoard,
@@ -171,7 +171,7 @@ import {
   Document,
   Picture,
   VideoPlay,
-  Headphone,
+  Headset,
 } from '@element-plus/icons-vue'
 import dayjs from 'dayjs'
 import { useConfigStore } from '@/stores/config'
@@ -179,7 +179,6 @@ import FilesApi from '@/api/files'
 import type { FileInfo } from '@/types/file'
 import type { SystemInfo } from '@/types/config'
 
-const { t } = useI18n()
 const configStore = useConfigStore()
 
 // 状态
@@ -228,7 +227,7 @@ const categoryStats = computed(() => [
   {
     name: 'music',
     label: '音频',
-    icon: Headphone,
+    icon: Headset,
     color: '#F56C6C',
     count: recentFiles.value.filter(f => f.category === 'music').length,
   },
@@ -396,7 +395,9 @@ onMounted(() => {
 }
 
 .disk-usage {
-  space-y: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .usage-info {
@@ -421,7 +422,9 @@ onMounted(() => {
 }
 
 .category-stats {
-  space-y: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 .category-item {

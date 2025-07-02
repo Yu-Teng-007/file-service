@@ -21,7 +21,11 @@
     "config:show": "node -e \"console.log(JSON.stringify(require('./dist/config/configuration').default(), null, 2))\"",
     "env:dev": "copy .env.development .env",
     "env:prod": "copy .env.production .env",
-    "env:test": "copy .env.test .env"
+    "env:test": "copy .env.test .env",
+    "keys:generate": "node scripts/generate-api-keys.js",
+    "keys:generate:dev": "node scripts/generate-api-keys.js dev",
+    "keys:generate:prod": "node scripts/generate-api-keys.js prod",
+    "keys:generate:test": "node scripts/generate-api-keys.js test"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.839.0",

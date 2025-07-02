@@ -178,3 +178,15 @@ data/
 # OS
 .DS_Store
 Thumbs.db
+
+# API Keys and Secrets
+generated-keys.json
+*.key
+*.pem
+*.p12
+*.pfx
+
+# Backup files
+*.backup
+*.bak
+*~

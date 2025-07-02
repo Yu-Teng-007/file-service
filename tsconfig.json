@@ -25,5 +25,7 @@
       "@/common/*": ["src/common/*"],
       "@/utils/*": ["src/utils/*"]
     }
-  }
+  },
+  "include": ["src/**/*", "test/**/*"],
+  "exclude": ["node_modules", "dist", "file-manager-frontend/**/*"]
 }

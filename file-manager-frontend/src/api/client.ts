@@ -1,4 +1,4 @@
-import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios'
+import axios, { type AxiosInstance, type AxiosRequestConfig, type AxiosResponse } from 'axios'
 import { ElMessage } from 'element-plus'
 import { useConfigStore } from '@/stores/config'
 
@@ -27,7 +27,7 @@ class ApiClient {
   private setupInterceptors() {
     // 请求拦截器
     this.instance.interceptors.request.use(
-      (config) => {
+      config => {
         // 添加 API Key
         const apiKey = this.configStore.apiKey || import.meta.env.VITE_API_KEY
         if (apiKey) {
@@ -36,7 +36,7 @@ class ApiClient {
 
         return config
       },
-      (error) => {
+      error => {
         return Promise.reject(error)
       }
     )
@@ -46,7 +46,7 @@ class ApiClient {
       (response: AxiosResponse) => {
         return response
       },
-      (error) => {
+      error => {
         this.handleError(error)
         return Promise.reject(error)
       }
@@ -61,7 +61,7 @@ class ApiClient {
 
     if (error.response) {
       const { status, data } = error.response
-      
+
       switch (status) {
         case 400:
           message = data?.message || '请求参数错误'
@@ -140,7 +140,7 @@ class ApiClient {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
-      onUploadProgress: (progressEvent) => {
+      onUploadProgress: progressEvent => {
         if (progressEvent.total && onProgress) {
           const progress = Math.round((progressEvent.loaded * 100) / progressEvent.total)
           onProgress(progress)

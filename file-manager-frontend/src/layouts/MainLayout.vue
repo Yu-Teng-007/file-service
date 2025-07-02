@@ -7,7 +7,7 @@
           <el-icon v-if="isCollapse" size="24"><Folder /></el-icon>
           <span v-else class="logo-text">文件管理系统</span>
         </div>
-        
+
         <el-menu
           :default-active="$route.path"
           :collapse="isCollapse"
@@ -19,17 +19,17 @@
             <el-icon><Dashboard /></el-icon>
             <template #title>{{ $t('nav.dashboard') }}</template>
           </el-menu-item>
-          
+
           <el-menu-item index="/files">
             <el-icon><Folder /></el-icon>
             <template #title>{{ $t('nav.fileList') }}</template>
           </el-menu-item>
-          
+
           <el-menu-item index="/upload">
             <el-icon><Upload /></el-icon>
             <template #title>{{ $t('nav.upload') }}</template>
           </el-menu-item>
-          
+
           <el-menu-item index="/settings">
             <el-icon><Setting /></el-icon>
             <template #title>{{ $t('nav.settings') }}</template>
@@ -48,7 +48,7 @@
               text
               size="large"
             />
-            
+
             <el-breadcrumb separator="/">
               <el-breadcrumb-item :to="{ path: '/' }">首页</el-breadcrumb-item>
               <el-breadcrumb-item v-if="$route.meta?.title">
@@ -56,7 +56,7 @@
               </el-breadcrumb-item>
             </el-breadcrumb>
           </div>
-          
+
           <div class="header-right">
             <!-- 主题切换 -->
             <el-dropdown @command="handleThemeChange">
@@ -78,7 +78,7 @@
                 </el-dropdown-menu>
               </template>
             </el-dropdown>
-            
+
             <!-- 语言切换 -->
             <el-dropdown @command="handleLanguageChange">
               <el-button icon="Globe" text size="large" />
@@ -89,14 +89,9 @@
                 </el-dropdown-menu>
               </template>
             </el-dropdown>
-            
+
             <!-- 刷新 -->
-            <el-button
-              :icon="Refresh"
-              @click="handleRefresh"
-              text
-              size="large"
-            />
+            <el-button :icon="Refresh" @click="handleRefresh" text size="large" />
           </div>
         </el-header>
 
@@ -115,7 +110,7 @@ import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useConfigStore } from '@/stores/config'
 import {
-  Dashboard,
+  Odometer as Dashboard,
   Folder,
   Upload,
   Setting,
