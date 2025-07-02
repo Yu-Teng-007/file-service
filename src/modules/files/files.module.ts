@@ -98,6 +98,6 @@ import { ErrorRecoveryService } from '../../common/services/error-recovery.servi
   ],
   controllers: [FilesController],
   providers: [FilesService, FileValidationService, FileStorageService, ErrorRecoveryService],
-  exports: [FilesService],
+  exports: [FilesService, FileStorageService],
 })
 export class FilesModule {}

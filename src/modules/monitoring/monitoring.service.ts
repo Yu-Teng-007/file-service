@@ -1,10 +1,11 @@
-import { Injectable, Logger } from '@nestjs/common'
+import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { Cron, CronExpression } from '@nestjs/schedule'
 import { promises as fs } from 'fs'
 import { join } from 'path'
 import { v4 as uuidv4 } from 'uuid'
 import * as os from 'os'
+import { FileStorageService } from '../files/file-storage.service'
 import {
   FileAccessLog,
   StorageStats,
@@ -29,7 +30,11 @@ export class MonitoringService {
   private config: MonitoringConfig
   private startTime = Date.now()
 
-  constructor(private configService: ConfigService) {
+  constructor(
+    private configService: ConfigService,
+    @Inject(forwardRef(() => FileStorageService))
+    private fileStorageService: FileStorageService
+  ) {
     this.config = this.loadConfig()
     this.initializeDefaultAlertRules()
   }
@@ -60,19 +65,33 @@ export class MonitoringService {
    */
   async getStorageStats(): Promise<StorageStats> {
     try {
+      // 使用文件服务的统计数据，确保与文件列表一致
+      const fileStats = await this.fileStorageService.getStats()
       const uploadDir = this.configService.get<string>('UPLOAD_DIR', 'uploads')
-      const stats = await this.calculateDirectoryStats(uploadDir)
 
       // 获取系统磁盘信息
       const diskStats = await this.getDiskStats(uploadDir)
 
+      // 转换分类统计格式
+      const categoryBreakdown: Record<string, { count: number; size: number; percentage: number }> =
+        {}
+
+      for (const [category, count] of Object.entries(fileStats.categoryCounts)) {
+        const size = fileStats.categorySizes[category] || 0
+        categoryBreakdown[category] = {
+          count,
+          size,
+          percentage: fileStats.totalSize > 0 ? (size / fileStats.totalSize) * 100 : 0,
+        }
+      }
+
       return {
-        totalFiles: stats.fileCount,
-        totalSize: stats.totalSize,
+        totalFiles: fileStats.totalFiles,
+        totalSize: fileStats.totalSize,
         usedSpace: diskStats.used,
         availableSpace: diskStats.available,
-        usagePercentage: (diskStats.used / diskStats.total) * 100,
-        categoryBreakdown: stats.categoryBreakdown,
+        usagePercentage: diskStats.total > 0 ? (diskStats.used / diskStats.total) * 100 : 0,
+        categoryBreakdown,
       }
     } catch (error) {
       this.logger.error('获取存储统计失败', error)
