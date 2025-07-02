@@ -7,6 +7,7 @@ import type {
   ApiResponse,
   BatchOperation,
 } from '@/types/file'
+import type { SystemInfo } from '@/types/config'
 
 /**
  * 文件相关 API
@@ -17,7 +18,7 @@ export class FilesApi {
    */
   static async getFileList(query: FileListQuery = {}): Promise<FileListResponse> {
     const params = new URLSearchParams()
-    
+
     if (query.page) params.append('page', query.page.toString())
     if (query.limit) params.append('limit', query.limit.toString())
     if (query.category) params.append('category', query.category)
@@ -49,7 +50,7 @@ export class FilesApi {
   ): Promise<FileInfo> {
     const formData = new FormData()
     formData.append('file', file)
-    
+
     if (options.category) formData.append('category', options.category)
     if (options.accessLevel) formData.append('accessLevel', options.accessLevel)
     if (options.customPath) formData.append('customPath', options.customPath)
@@ -73,11 +74,11 @@ export class FilesApi {
     onProgress?: (progress: number) => void
   ): Promise<FileInfo[]> {
     const formData = new FormData()
-    
+
     files.forEach(file => {
       formData.append('files', file)
     })
-    
+
     if (options.category) formData.append('category', options.category)
     if (options.accessLevel) formData.append('accessLevel', options.accessLevel)
     if (options.customPath) formData.append('customPath', options.customPath)
@@ -138,6 +139,50 @@ export class FilesApi {
   static getThumbnailUrl(id: string, size: 'small' | 'medium' | 'large' = 'medium'): string {
     const baseURL = import.meta.env.VITE_API_BASE_URL
     return `${baseURL}/files/${id}/thumbnail?size=${size}`
+  }
+
+  /**
+   * 获取系统统计信息
+   */
+  static async getSystemStats(): Promise<SystemInfo> {
+    try {
+      // 获取监控仪表板数据
+      const dashboardResponse = await apiClient.get<ApiResponse<any>>('/monitoring/dashboard')
+      const dashboardData = dashboardResponse.data
+
+      // 获取系统信息
+      const systemResponse = await apiClient.get<ApiResponse<any>>('/info')
+      const systemInfo = systemResponse.data
+
+      // 转换后端数据格式为前端需要的格式
+      return {
+        version: systemInfo?.version || '1.0.0',
+        uptime: Math.floor((dashboardData?.systemHealth?.uptime || 0) / 1000), // 转换毫秒为秒
+        totalFiles: dashboardData?.storageStats?.totalFiles || 0,
+        totalSize: dashboardData?.storageStats?.totalSize || 0,
+        diskUsage: {
+          used: dashboardData?.storageStats?.usedSpace || 0,
+          total:
+            (dashboardData?.storageStats?.usedSpace || 0) +
+            (dashboardData?.storageStats?.availableSpace || 0),
+          free: dashboardData?.storageStats?.availableSpace || 0,
+        },
+      }
+    } catch (error) {
+      console.error('Failed to fetch system stats:', error)
+      // 返回默认值以防API调用失败
+      return {
+        version: '1.0.0',
+        uptime: 0,
+        totalFiles: 0,
+        totalSize: 0,
+        diskUsage: {
+          used: 0,
+          total: 0,
+          free: 0,
+        },
+      }
+    }
   }
 }
 

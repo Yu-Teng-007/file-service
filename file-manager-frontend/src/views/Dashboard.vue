@@ -268,22 +268,22 @@ const getDiskUsageColor = (percent: number): string => {
 
 const loadStats = async () => {
   try {
-    // 模拟系统统计数据
-    // 在实际应用中，这里应该调用真实的API
+    // 调用真实的系统统计API
+    stats.value = await FilesApi.getSystemStats()
+  } catch (error) {
+    console.error('Failed to load stats:', error)
+    // 如果API调用失败，显示默认值
     stats.value = {
       version: '1.0.0',
-      uptime: Math.floor(Math.random() * 86400 * 7), // 随机7天内的运行时间
-      totalFiles: Math.floor(Math.random() * 1000) + 100,
-      totalSize: Math.floor(Math.random() * 1024 * 1024 * 1024 * 10), // 随机10GB内
+      uptime: 0,
+      totalFiles: 0,
+      totalSize: 0,
       diskUsage: {
-        total: 1024 * 1024 * 1024 * 100, // 100GB
-        used: Math.floor(Math.random() * 1024 * 1024 * 1024 * 50), // 随机50GB内
+        used: 0,
+        total: 0,
         free: 0,
       },
     }
-    stats.value.diskUsage.free = stats.value.diskUsage.total - stats.value.diskUsage.used
-  } catch (error) {
-    console.error('Failed to load stats:', error)
   }
 }
 
@@ -299,6 +299,7 @@ const loadRecentFiles = async () => {
     recentFiles.value = response.files
   } catch (error) {
     console.error('Failed to load recent files:', error)
+    recentFiles.value = []
   } finally {
     loadingRecentFiles.value = false
   }
