@@ -3,10 +3,11 @@
     <el-dialog
       v-model="visible"
       :title="previewTitle"
-      width="90%"
+      :width="dialogWidth"
       :before-close="handleClose"
       destroy-on-close
       class="preview-dialog"
+      center
     >
       <div class="preview-container">
         <!-- 加载状态 -->
@@ -30,16 +31,34 @@
               :src="previewUrl"
               :alt="fileInfo?.filename"
               class="preview-image"
+              :style="{
+                transform: `scale(${imageScale}) rotate(${imageRotation}deg)`,
+                maxWidth: '800px',
+                maxHeight: '600px',
+              }"
               @load="handleImageLoad"
               @error="handleImageError"
             />
             <div class="image-controls">
               <el-button-group>
-                <el-button :icon="ZoomIn" @click="zoomIn" />
-                <el-button :icon="ZoomOut" @click="zoomOut" />
-                <el-button :icon="RefreshLeft" @click="rotateLeft" />
-                <el-button :icon="RefreshRight" @click="rotateRight" />
-                <el-button :icon="FullScreen" @click="toggleFullscreen" />
+                <el-tooltip content="放大" placement="top">
+                  <el-button :icon="ZoomIn" @click="zoomIn" :disabled="imageScale >= 5" />
+                </el-tooltip>
+                <el-tooltip content="缩小" placement="top">
+                  <el-button :icon="ZoomOut" @click="zoomOut" :disabled="imageScale <= 0.1" />
+                </el-tooltip>
+                <el-tooltip content="重置" placement="top">
+                  <el-button :icon="Refresh" @click="resetImage" />
+                </el-tooltip>
+                <el-tooltip content="向左旋转" placement="top">
+                  <el-button :icon="RefreshLeft" @click="rotateLeft" />
+                </el-tooltip>
+                <el-tooltip content="向右旋转" placement="top">
+                  <el-button :icon="RefreshRight" @click="rotateRight" />
+                </el-tooltip>
+                <el-tooltip content="全屏" placement="top">
+                  <el-button :icon="FullScreen" @click="toggleFullscreen" />
+                </el-tooltip>
               </el-button-group>
               <span class="zoom-info">{{ Math.round(imageScale * 100) }}%</span>
             </div>
@@ -180,6 +199,7 @@ import {
   Headset,
   Document,
   QuestionFilled,
+  Refresh,
 } from '@element-plus/icons-vue'
 import { useI18n } from 'vue-i18n'
 import FilesApi from '@/api/files'
@@ -214,6 +234,26 @@ const visible = computed({
 
 const previewTitle = computed(() => {
   return props.fileInfo?.filename || t('preview.title')
+})
+
+// 响应式对话框宽度
+const dialogWidth = computed(() => {
+  if (typeof window === 'undefined') return '80%'
+
+  const screenWidth = window.innerWidth
+
+  // 根据屏幕宽度动态调整对话框宽度
+  if (screenWidth >= 1920) {
+    return '1200px' // 大屏幕：固定宽度
+  } else if (screenWidth >= 1440) {
+    return '1000px' // 中大屏幕
+  } else if (screenWidth >= 1024) {
+    return '800px' // 中等屏幕
+  } else if (screenWidth >= 768) {
+    return '90%' // 平板
+  } else {
+    return '95%' // 手机
+  }
 })
 
 const previewUrl = computed(() => {
@@ -362,6 +402,11 @@ const zoomOut = () => {
   imageScale.value = Math.max(imageScale.value / 1.2, 0.1)
 }
 
+const resetImage = () => {
+  imageScale.value = 1
+  imageRotation.value = 0
+}
+
 const rotateLeft = () => {
   imageRotation.value -= 90
 }
@@ -424,17 +469,49 @@ watch(visible, newVisible => {
 .file-preview {
   .preview-dialog {
     :deep(.el-dialog) {
-      margin-top: 5vh;
-      margin-bottom: 5vh;
-      height: 90vh;
+      margin-top: 8vh;
+      margin-bottom: 8vh;
+      max-height: 84vh;
+      min-height: 400px;
       display: flex;
       flex-direction: column;
+      border-radius: 12px;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.15);
+    }
+
+    :deep(.el-dialog__header) {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--el-border-color-lighter);
+
+      .el-dialog__title {
+        font-size: 16px;
+        font-weight: 600;
+        color: var(--el-text-color-primary);
+      }
     }
 
     :deep(.el-dialog__body) {
       flex: 1;
       padding: 0;
       overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    :deep(.el-dialog__headerbtn) {
+      top: 16px;
+      right: 16px;
+      width: 32px;
+      height: 32px;
+
+      .el-dialog__close {
+        font-size: 16px;
+        color: var(--el-text-color-secondary);
+
+        &:hover {
+          color: var(--el-text-color-primary);
+        }
+      }
     }
   }
 
@@ -450,7 +527,8 @@ watch(visible, newVisible => {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    height: 400px;
+    min-height: 300px;
+    flex: 1;
     gap: 16px;
   }
 
@@ -466,27 +544,60 @@ watch(visible, newVisible => {
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 20px;
+    justify-content: center;
+    padding: 16px;
+    background-color: var(--el-fill-color-lighter);
+    border-radius: 8px;
+    margin: 16px;
+    overflow: hidden;
+    position: relative;
   }
 
   .preview-image {
-    max-width: 100%;
-    max-height: calc(100% - 60px);
     object-fit: contain;
-    transform: scale(var(--image-scale, 1)) rotate(var(--image-rotation, 0deg));
     transition: transform 0.3s ease;
+    border-radius: 4px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    cursor: grab;
+
+    &:active {
+      cursor: grabbing;
+    }
   }
 
   .image-controls {
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: 16px;
     margin-top: 16px;
+    padding: 8px 16px;
+    background-color: rgba(0, 0, 0, 0.05);
+    border-radius: 20px;
+    backdrop-filter: blur(8px);
+
+    .el-button-group {
+      .el-button {
+        border-radius: 6px;
+        padding: 8px;
+
+        &:hover {
+          transform: translateY(-1px);
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+      }
+    }
   }
 
   .zoom-info {
-    font-size: 14px;
-    color: var(--el-text-color-secondary);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--el-text-color-primary);
+    background-color: var(--el-color-primary-light-9);
+    padding: 4px 8px;
+    border-radius: 12px;
+    min-width: 50px;
+    text-align: center;
   }
 
   .video-preview,
@@ -494,13 +605,18 @@ watch(visible, newVisible => {
     display: flex;
     justify-content: center;
     align-items: center;
-    padding: 20px;
+    padding: 16px;
     flex: 1;
+    background-color: var(--el-fill-color-lighter);
+    border-radius: 8px;
+    margin: 16px;
   }
 
   .preview-video {
-    max-width: 100%;
-    max-height: 100%;
+    max-width: calc(100% - 32px);
+    max-height: calc(100% - 32px);
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   }
 
   .audio-container {
@@ -570,8 +686,10 @@ watch(visible, newVisible => {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    height: 400px;
+    flex: 1;
+    min-height: 300px;
     gap: 16px;
+    padding: 20px;
   }
 
   .preview-footer {

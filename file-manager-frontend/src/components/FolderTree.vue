@@ -124,32 +124,34 @@
     </el-dialog>
 
     <!-- 右键菜单 -->
-    <div
-      ref="contextMenuRef"
-      class="context-menu"
-      :style="contextMenuStyle"
-      v-show="showContextMenu"
-      @click.stop
-    >
-      <el-card class="context-menu-card" shadow="always">
-        <div class="menu-item" @click="handleContextCommand('create')">
-          <el-icon><Plus /></el-icon>
-          <span>{{ $t('folder.create') }}</span>
-        </div>
-        <!-- 系统文件夹不能重命名和删除 -->
-        <template v-if="!selectedNode?.data?.isSystem">
-          <div class="menu-item" @click="handleContextCommand('rename')">
-            <el-icon><Edit /></el-icon>
-            <span>{{ $t('folder.rename') }}</span>
+    <transition name="context-menu-fade">
+      <div
+        ref="contextMenuRef"
+        class="context-menu"
+        :style="contextMenuStyle"
+        v-show="showContextMenu"
+        @click.stop
+      >
+        <el-card class="context-menu-card" shadow="always">
+          <div class="menu-item" @click="handleContextCommand('create')">
+            <el-icon><Plus /></el-icon>
+            <span>{{ $t('folder.create') }}</span>
           </div>
-          <el-divider style="margin: 8px 0" />
-          <div class="menu-item danger" @click="handleContextCommand('delete')">
-            <el-icon><Delete /></el-icon>
-            <span>{{ $t('folder.delete') }}</span>
-          </div>
-        </template>
-      </el-card>
-    </div>
+          <!-- 系统文件夹不能重命名和删除 -->
+          <template v-if="!selectedNode?.data?.isSystem">
+            <div class="menu-item" @click="handleContextCommand('rename')">
+              <el-icon><Edit /></el-icon>
+              <span>{{ $t('folder.rename') }}</span>
+            </div>
+            <el-divider />
+            <div class="menu-item danger" @click="handleContextCommand('delete')">
+              <el-icon><Delete /></el-icon>
+              <span>{{ $t('folder.delete') }}</span>
+            </div>
+          </template>
+        </el-card>
+      </div>
+    </transition>
 
     <!-- 重命名对话框 -->
     <el-dialog v-model="showRenameDialog" :title="$t('folder.renameDialog.title')" width="400px">
@@ -433,7 +435,7 @@ defineExpose({
 })
 </script>
 
-<style scoped>
+<style scoped lang="scss">
 .folder-tree {
   height: 100%;
   display: flex;
@@ -630,25 +632,45 @@ defineExpose({
 
 /* 右键菜单样式 */
 .context-menu {
+  position: fixed;
+  z-index: 9999;
+
   .context-menu-card {
-    padding: 8px 0;
-    border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    border: 1px solid var(--el-border-color-light);
-    min-width: 160px;
+    padding: 4px 0;
+    border-radius: 6px;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+    border: 1px solid var(--el-border-color-lighter);
+    min-width: 140px;
+    background: var(--el-bg-color-overlay);
+    backdrop-filter: blur(8px);
+
+    :deep(.el-card__body) {
+      padding: 0;
+    }
   }
 
   .menu-item {
     display: flex;
     align-items: center;
-    padding: 8px 16px;
+    padding: 6px 12px;
     cursor: pointer;
-    transition: background-color 0.2s;
-    font-size: 14px;
+    transition: all 0.2s ease;
+    font-size: 13px;
     color: var(--el-text-color-primary);
+    position: relative;
+
+    &:first-child {
+      border-radius: 6px 6px 0 0;
+    }
+
+    &:last-child {
+      border-radius: 0 0 6px 6px;
+    }
 
     &:hover {
-      background-color: var(--el-fill-color-light);
+      background-color: var(--el-color-primary-light-9);
+      color: var(--el-color-primary);
+      transform: translateX(2px);
     }
 
     &.danger {
@@ -656,13 +678,49 @@ defineExpose({
 
       &:hover {
         background-color: var(--el-color-danger-light-9);
+        color: var(--el-color-danger-dark-2);
       }
     }
 
     .el-icon {
-      margin-right: 8px;
-      font-size: 16px;
+      margin-right: 6px;
+      font-size: 14px;
+      width: 14px;
+      height: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    span {
+      font-weight: 500;
+      white-space: nowrap;
     }
   }
+
+  /* 分割线样式 */
+  :deep(.el-divider) {
+    margin: 2px 8px;
+    border-color: var(--el-border-color-lighter);
+  }
+}
+
+/* 右键菜单动画 */
+.context-menu-fade-enter-active {
+  transition: all 0.15s ease-out;
+}
+
+.context-menu-fade-leave-active {
+  transition: all 0.1s ease-in;
+}
+
+.context-menu-fade-enter-from {
+  opacity: 0;
+  transform: scale(0.95) translateY(-4px);
+}
+
+.context-menu-fade-leave-to {
+  opacity: 0;
+  transform: scale(0.95) translateY(-2px);
 }
 </style>

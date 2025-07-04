@@ -156,44 +156,66 @@
               </template>
             </el-table-column>
 
-            <el-table-column label="操作" width="250" fixed="right">
+            <el-table-column label="操作" width="200" fixed="right">
               <template #default="{ row }">
                 <div class="action-buttons">
-                  <el-button size="small" text @click="previewFile(row)">
-                    {{ $t('file.preview') }}
-                  </el-button>
-                  <el-button size="small" text @click="downloadFile(row)">
-                    {{ $t('file.download') }}
-                  </el-button>
-                  <el-button
+                  <!-- 主要操作按钮 -->
+                  <el-tooltip content="预览" placement="top" :show-after="800">
+                    <el-button
+                      size="small"
+                      text
+                      class="action-btn primary-action"
+                      @click="previewFile(row)"
+                    >
+                      <el-icon><View /></el-icon>
+                    </el-button>
+                  </el-tooltip>
+
+                  <el-tooltip content="下载" placement="top" :show-after="800">
+                    <el-button size="small" text class="action-btn" @click="downloadFile(row)">
+                      <el-icon><Download /></el-icon>
+                    </el-button>
+                  </el-tooltip>
+
+                  <el-tooltip
                     v-if="row.category === 'images'"
-                    size="small"
-                    text
-                    @click="editImage(row)"
+                    content="编辑"
+                    placement="top"
+                    :show-after="800"
                   >
-                    {{ $t('file.edit') }}
-                  </el-button>
-                  <el-dropdown @command="cmd => handleFileAction(cmd, row)">
-                    <el-button size="small" text>
-                      {{ $t('file.more') }}
-                      <el-icon class="el-icon--right"><ArrowDown /></el-icon>
+                    <el-button size="small" text class="action-btn" @click="editImage(row)">
+                      <el-icon><Edit /></el-icon>
+                    </el-button>
+                  </el-tooltip>
+
+                  <!-- 更多操作下拉菜单 -->
+                  <el-dropdown
+                    trigger="click"
+                    placement="bottom-end"
+                    @command="cmd => handleFileAction(cmd, row)"
+                  >
+                    <el-button size="small" text class="action-btn more-btn">
+                      <el-icon><MoreFilled /></el-icon>
                     </el-button>
                     <template #dropdown>
-                      <el-dropdown-menu>
-                        <el-dropdown-item command="rename" :icon="Edit">
-                          {{ $t('file.rename') }}
-                        </el-dropdown-item>
+                      <el-dropdown-menu class="action-dropdown">
+                        <el-dropdown-item command="rename" :icon="Edit">重命名</el-dropdown-item>
                         <el-dropdown-item command="properties" :icon="InfoFilled">
-                          {{ $t('file.properties') }}
+                          属性
                         </el-dropdown-item>
                         <el-dropdown-item command="versions" :icon="Clock">
-                          {{ $t('file.versions') }}
+                          版本历史
                         </el-dropdown-item>
                         <el-dropdown-item command="tags" :icon="PriceTag">
-                          {{ $t('file.manageTags') }}
+                          管理标签
                         </el-dropdown-item>
-                        <el-dropdown-item command="delete" :icon="Delete" divided>
-                          <span style="color: var(--el-color-danger)">{{ $t('file.delete') }}</span>
+                        <el-dropdown-item
+                          command="delete"
+                          :icon="Delete"
+                          divided
+                          class="danger-item"
+                        >
+                          删除
                         </el-dropdown-item>
                       </el-dropdown-menu>
                     </template>
@@ -307,6 +329,9 @@ import {
   InfoFilled,
   Clock,
   PriceTag,
+  View,
+  Download,
+  MoreFilled,
 } from '@element-plus/icons-vue'
 import dayjs from 'dayjs'
 import { useConfigStore } from '@/stores/config'
@@ -766,9 +791,93 @@ onMounted(() => {
   text-decoration: underline;
 }
 
+/* 操作按钮样式优化 */
 .action-buttons {
   display: flex;
-  gap: 8px;
+  align-items: center;
+  gap: 4px;
+  justify-content: flex-start;
+  padding: 0 8px;
+}
+
+.action-btn {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  &:hover {
+    background-color: var(--el-fill-color-light);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+
+  .el-icon {
+    font-size: 16px;
+    color: var(--el-text-color-regular);
+  }
+
+  &.primary-action {
+    .el-icon {
+      color: var(--el-color-primary);
+    }
+
+    &:hover {
+      background-color: var(--el-color-primary-light-9);
+
+      .el-icon {
+        color: var(--el-color-primary-dark-2);
+      }
+    }
+  }
+
+  &.more-btn {
+    .el-icon {
+      color: var(--el-text-color-secondary);
+    }
+
+    &:hover {
+      .el-icon {
+        color: var(--el-text-color-primary);
+      }
+    }
+  }
+}
+
+/* 下拉菜单样式优化 */
+.action-dropdown {
+  border-radius: 8px;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+  border: 1px solid var(--el-border-color-lighter);
+  overflow: hidden;
+
+  .el-dropdown-menu__item {
+    padding: 8px 16px;
+    font-size: 13px;
+    transition: all 0.2s ease;
+
+    &:hover {
+      background-color: var(--el-fill-color-light);
+    }
+
+    &.danger-item {
+      color: var(--el-color-danger);
+
+      &:hover {
+        background-color: var(--el-color-danger-light-9);
+        color: var(--el-color-danger-dark-2);
+      }
+    }
+
+    .el-icon {
+      margin-right: 8px;
+      font-size: 14px;
+    }
+  }
 }
 
 .grid-view {
