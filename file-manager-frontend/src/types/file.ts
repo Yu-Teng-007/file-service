@@ -32,6 +32,7 @@ export interface FileInfo {
   mimeType: string
   uploadedBy?: string
   uploadedAt: string
+  folderId?: string
   metadata?: Record<string, any>
   checksum?: string
 }
@@ -49,6 +50,7 @@ export interface FileListQuery {
   limit?: number
   category?: FileCategory
   search?: string
+  folderId?: string
   sortBy?: string
   sortOrder?: 'asc' | 'desc'
 }

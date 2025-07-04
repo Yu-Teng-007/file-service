@@ -135,6 +135,13 @@ export class FileSearchDto {
   mimeType?: string
 
   @ApiPropertyOptional({
+    description: '按文件夹筛选',
+  })
+  @IsOptional()
+  @IsString()
+  folderId?: string
+
+  @ApiPropertyOptional({
     description: '页码',
     default: 1,
     minimum: 1,
@@ -267,6 +274,9 @@ export class FileResponseDto {
 
   @ApiProperty({ description: '上传时间' })
   uploadedAt: Date
+
+  @ApiPropertyOptional({ description: '所属文件夹ID' })
+  folderId?: string
 
   @ApiPropertyOptional({ description: '文件元数据' })
   metadata?: Record<string, any>

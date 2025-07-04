@@ -109,26 +109,29 @@
     </el-dialog>
 
     <!-- 右键菜单 -->
-    <el-dropdown
+    <div
       ref="contextMenuRef"
-      :virtual-ref="contextMenuTarget"
-      virtual-triggering
-      @command="handleContextCommand"
+      class="context-menu"
+      :style="contextMenuStyle"
+      v-show="showContextMenu"
+      @click.stop
     >
-      <template #dropdown>
-        <el-dropdown-menu>
-          <el-dropdown-item command="create" :icon="Plus">
-            {{ $t('folder.create') }}
-          </el-dropdown-item>
-          <el-dropdown-item command="rename" :icon="Edit">
-            {{ $t('folder.rename') }}
-          </el-dropdown-item>
-          <el-dropdown-item command="delete" :icon="Delete" divided>
-            {{ $t('folder.delete') }}
-          </el-dropdown-item>
-        </el-dropdown-menu>
-      </template>
-    </el-dropdown>
+      <el-card class="context-menu-card" shadow="always">
+        <div class="menu-item" @click="handleContextCommand('create')">
+          <el-icon><Plus /></el-icon>
+          <span>{{ $t('folder.create') }}</span>
+        </div>
+        <div class="menu-item" @click="handleContextCommand('rename')">
+          <el-icon><Edit /></el-icon>
+          <span>{{ $t('folder.rename') }}</span>
+        </div>
+        <el-divider style="margin: 8px 0" />
+        <div class="menu-item danger" @click="handleContextCommand('delete')">
+          <el-icon><Delete /></el-icon>
+          <span>{{ $t('folder.delete') }}</span>
+        </div>
+      </el-card>
+    </div>
 
     <!-- 重命名对话框 -->
     <el-dialog v-model="showRenameDialog" :title="$t('folder.renameDialog.title')" width="400px">
@@ -199,12 +202,13 @@ const treeRef = ref<any>()
 const createFormRef = ref<FormInstance>()
 const renameFormRef = ref<FormInstance>()
 const contextMenuRef = ref<any>()
-const contextMenuTarget = ref<HTMLElement>()
 const creating = ref(false)
 const renaming = ref(false)
 const showCreateDialog = ref(false)
 const showRenameDialog = ref(false)
+const showContextMenu = ref(false)
 const selectedNode = ref<any>(null)
+const contextMenuStyle = ref<any>({})
 
 // Forms
 const createForm = reactive<FolderCreateDto>({
@@ -249,9 +253,9 @@ const renameRules: FormRules = {
 }
 
 // Methods
-const loadFolders = async () => {
+const loadFolders = async (force = false) => {
   try {
-    await foldersStore.loadFolders()
+    await foldersStore.loadFolders(force)
   } catch (error) {
     console.error('Failed to load folders:', error)
     ElMessage.error(t('folder.loadError'))
@@ -265,12 +269,35 @@ const handleNodeClick = (data: FolderInfo) => {
 const handleContextMenu = (event: MouseEvent, data: FolderInfo, node: any) => {
   event.preventDefault()
   selectedNode.value = { data, node }
-  contextMenuTarget.value = event.target as HTMLElement
-  contextMenuRef.value?.handleOpen()
+
+  // 设置菜单位置
+  contextMenuStyle.value = {
+    position: 'fixed',
+    left: `${event.clientX}px`,
+    top: `${event.clientY}px`,
+    zIndex: 9999,
+  }
+
+  // 显示菜单
+  showContextMenu.value = true
+
+  // 点击其他地方关闭菜单
+  const closeMenu = () => {
+    showContextMenu.value = false
+    document.removeEventListener('click', closeMenu)
+  }
+
+  // 延迟添加事件监听器，避免立即触发
+  setTimeout(() => {
+    document.addEventListener('click', closeMenu)
+  }, 0)
 }
 
 const handleContextCommand = (command: string) => {
   if (!selectedNode.value) return
+
+  // 关闭右键菜单
+  showContextMenu.value = false
 
   switch (command) {
     case 'create':
@@ -295,7 +322,7 @@ const handleCreate = async () => {
     creating.value = true
 
     const folder = await FilesApi.createFolder(createForm)
-    await loadFolders()
+    await loadFolders(true) // 强制刷新文件夹列表
 
     showCreateDialog.value = false
     createForm.name = ''
@@ -319,7 +346,7 @@ const handleRename = async () => {
     renaming.value = true
 
     const folder = await FilesApi.renameFolder(selectedNode.value.data.id, renameForm.name)
-    await loadFolders()
+    await loadFolders(true) // 强制刷新文件夹列表
 
     showRenameDialog.value = false
     renameForm.name = ''
@@ -349,7 +376,7 @@ const handleDelete = async () => {
     )
 
     await FilesApi.deleteFolder(selectedNode.value.data.id)
-    await loadFolders()
+    await loadFolders(true) // 强制刷新文件夹列表
 
     ElMessage.success(t('folder.deleteSuccess'))
     emit('folder-deleted', selectedNode.value.data.id)
@@ -550,6 +577,44 @@ defineExpose({
 
     .el-icon {
       margin-right: 6px;
+    }
+  }
+}
+
+/* 右键菜单样式 */
+.context-menu {
+  .context-menu-card {
+    padding: 8px 0;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    border: 1px solid var(--el-border-color-light);
+    min-width: 160px;
+  }
+
+  .menu-item {
+    display: flex;
+    align-items: center;
+    padding: 8px 16px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    font-size: 14px;
+    color: var(--el-text-color-primary);
+
+    &:hover {
+      background-color: var(--el-fill-color-light);
+    }
+
+    &.danger {
+      color: var(--el-color-danger);
+
+      &:hover {
+        background-color: var(--el-color-danger-light-9);
+      }
+    }
+
+    .el-icon {
+      margin-right: 8px;
+      font-size: 16px;
     }
   }
 }

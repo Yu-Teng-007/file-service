@@ -36,6 +36,7 @@ export const useFilesStore = defineStore('files', () => {
         limit: pageSize.value,
         search: searchQuery.value || undefined,
         category: categoryFilter.value || undefined,
+        folderId: folderFilter.value || undefined,
         sortBy: sortBy.value,
         sortOrder: sortOrder.value,
         ...query,

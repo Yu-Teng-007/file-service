@@ -460,18 +460,24 @@ const findFolderById = (id: string): FolderInfo | null => {
 }
 
 const handleFolderCreated = (folder: FolderInfo) => {
-  ElMessage.success(t('folder.createSuccess'))
+  // 成功提示已在 FolderTree 组件中显示，这里不需要重复显示
+  // 刷新文件列表，因为可能影响当前文件夹的显示
+  filesStore.refreshFiles()
 }
 
 const handleFolderUpdated = (folder: FolderInfo) => {
-  ElMessage.success(t('folder.updateSuccess'))
+  // 成功提示已在 FolderTree 组件中显示，这里不需要重复显示
+  // 刷新文件列表，因为文件夹信息可能影响面包屑导航
+  filesStore.refreshFiles()
 }
 
 const handleFolderDeleted = (folderId: string) => {
   if (currentFolderId.value === folderId) {
     handleFolderSelect(null)
   }
-  ElMessage.success(t('folder.deleteSuccess'))
+  // 成功提示已在 FolderTree 组件中显示，这里不需要重复显示
+  // 刷新文件列表，因为删除的文件夹可能影响当前显示
+  filesStore.refreshFiles()
 }
 
 // 文件预览和编辑

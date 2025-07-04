@@ -40,6 +40,7 @@ export interface UploadedFileInfo {
   mimeType: string
   uploadedBy?: string
   uploadedAt: Date
+  folderId?: string
   metadata?: Record<string, any>
   checksum?: string
 }
@@ -63,6 +64,7 @@ export interface FileSearchQuery {
   minSize?: number
   maxSize?: number
   mimeType?: string
+  folderId?: string
   page?: number
   limit?: number
   sortBy?: 'name' | 'size' | 'date' | 'category'

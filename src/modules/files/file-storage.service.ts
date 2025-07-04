@@ -32,6 +32,7 @@ interface StoredFileMetadata {
   mimeType: string
   uploadedBy?: string
   uploadedAt: string
+  folderId?: string
   metadata?: Record<string, any>
   checksum?: string
 }
@@ -251,6 +252,10 @@ export class FileStorageService {
 
     if (query.maxSize !== undefined) {
       files = files.filter(f => f.size <= query.maxSize)
+    }
+
+    if (query.folderId) {
+      files = files.filter(f => f.folderId === query.folderId)
     }
 
     // 排序

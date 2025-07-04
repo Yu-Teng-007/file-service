@@ -158,6 +158,7 @@ export class FilesService {
       minSize: searchDto.minSize,
       maxSize: searchDto.maxSize,
       mimeType: searchDto.mimeType,
+      folderId: searchDto.folderId,
       page: searchDto.page,
       limit: searchDto.limit,
       sortBy: searchDto.sortBy,
@@ -401,6 +402,7 @@ export class FilesService {
       mimeType: fileInfo.mimeType,
       uploadedBy: fileInfo.uploadedBy,
       uploadedAt: fileInfo.uploadedAt,
+      folderId: fileInfo.folderId,
       metadata: fileInfo.metadata,
       checksum: fileInfo.checksum,
     }

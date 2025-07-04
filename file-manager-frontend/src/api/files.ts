@@ -32,6 +32,7 @@ export class FilesApi {
     if (query.limit) params.append('limit', query.limit.toString())
     if (query.category) params.append('category', query.category)
     if (query.search) params.append('search', query.search)
+    if (query.folderId) params.append('folderId', query.folderId)
     if (query.sortBy) params.append('sortBy', query.sortBy)
     if (query.sortOrder) params.append('sortOrder', query.sortOrder)
 
