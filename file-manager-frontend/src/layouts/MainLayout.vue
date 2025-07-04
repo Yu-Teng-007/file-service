@@ -81,7 +81,7 @@
 
             <!-- 语言切换 -->
             <el-dropdown @command="handleLanguageChange">
-              <el-button icon="Globe" text size="large" />
+              <el-button :icon="Switch" text size="large" />
               <template #dropdown>
                 <el-dropdown-menu>
                   <el-dropdown-item command="zh-CN">中文</el-dropdown-item>
@@ -120,6 +120,7 @@ import {
   Sunny,
   Moon,
   Monitor,
+  Switch,
 } from '@element-plus/icons-vue'
 
 const router = useRouter()
