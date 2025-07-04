@@ -220,10 +220,21 @@ export class FilesService {
   }
 
   /**
-   * 删除文件
+   * 删除文件（移动到回收站）
    */
   async deleteFile(id: string): Promise<void> {
-    await this.storageService.deleteFile(id)
+    // 获取文件信息
+    const fileInfo = await this.storageService.getFileInfo(id)
+
+    // 动态导入 TrashService 以避免循环依赖
+    const { TrashService } = await import('../trash/trash.service')
+    const trashService = new TrashService(this.configService, this.storageService)
+
+    // 将文件移动到回收站
+    await trashService.moveToTrash(fileInfo)
+
+    // 从存储服务中移除文件记录（但不删除物理文件，因为已经移动到回收站）
+    this.storageService.removeFileFromMetadata(id)
   }
 
   /**

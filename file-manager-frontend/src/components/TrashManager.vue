@@ -3,9 +3,11 @@
     <el-dialog
       v-model="visible"
       :title="$t('trash.title')"
-      width="80%"
+      width="90%"
+      top="5vh"
       :before-close="handleClose"
       destroy-on-close
+      class="trash-dialog"
     >
       <div class="trash-container">
         <!-- 工具栏 -->
@@ -42,8 +44,9 @@
             :data="filteredTrashItems"
             :loading="loading"
             @selection-change="handleSelectionChange"
-            empty-text="回收站为空"
-            height="400"
+            :empty-text="$t('trash.empty')"
+            height="500"
+            stripe
           >
             <el-table-column type="selection" width="55" />
 
@@ -53,7 +56,9 @@
                   <el-icon class="file-icon">
                     <component :is="getFileIcon(row.originalFileInfo)" />
                   </el-icon>
-                  <span class="name-text">{{ row.originalFileInfo.filename }}</span>
+                  <span class="name-text">
+                    {{ row.originalFileInfo.originalName || row.originalFileInfo.filename }}
+                  </span>
                 </div>
               </template>
             </el-table-column>
@@ -90,24 +95,28 @@
               </template>
             </el-table-column>
 
-            <el-table-column :label="$t('common.actions')" width="150" fixed="right">
+            <el-table-column :label="$t('common.actions')" width="180" fixed="right">
               <template #default="{ row }">
-                <el-button
-                  type="primary"
-                  size="small"
-                  :icon="RefreshLeft"
-                  @click="handleRestore([row.id])"
-                >
-                  {{ $t('trash.restore') }}
-                </el-button>
-                <el-button
-                  type="danger"
-                  size="small"
-                  :icon="Delete"
-                  @click="handlePermanentDelete([row.id])"
-                >
-                  {{ $t('trash.permanentDelete') }}
-                </el-button>
+                <div class="action-buttons">
+                  <el-button
+                    type="primary"
+                    size="small"
+                    :icon="RefreshLeft"
+                    @click="handleRestore([row.id])"
+                    plain
+                  >
+                    {{ $t('trash.restore') }}
+                  </el-button>
+                  <el-button
+                    type="danger"
+                    size="small"
+                    :icon="Delete"
+                    @click="handlePermanentDelete([row.id])"
+                    plain
+                  >
+                    {{ $t('trash.permanentDelete') }}
+                  </el-button>
+                </div>
               </template>
             </el-table-column>
           </el-table>
@@ -358,20 +367,28 @@ watch(visible, newVisible => {
 </script>
 
 <style scoped>
+:deep(.trash-dialog) {
+  .el-dialog__body {
+    padding: 20px;
+  }
+}
+
 .trash-manager {
   .trash-container {
     display: flex;
     flex-direction: column;
     gap: 16px;
+    height: 70vh;
   }
 
   .toolbar {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 16px;
+    padding: 12px 16px;
     background-color: var(--el-fill-color-lighter);
     border-radius: 8px;
+    border: 1px solid var(--el-border-color-light);
   }
 
   .toolbar-left,
@@ -382,6 +399,7 @@ watch(visible, newVisible => {
   }
 
   .file-list {
+    flex: 1;
     border: 1px solid var(--el-border-color-light);
     border-radius: 8px;
     overflow: hidden;
@@ -395,6 +413,7 @@ watch(visible, newVisible => {
 
   .file-icon {
     color: var(--el-color-primary);
+    font-size: 16px;
   }
 
   .name-text {
@@ -402,12 +421,32 @@ watch(visible, newVisible => {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    font-weight: 500;
   }
 
   .original-path {
-    font-size: 12px;
+    font-size: 11px;
     color: var(--el-text-color-secondary);
-    font-family: monospace;
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    background-color: var(--el-fill-color-light);
+    padding: 2px 6px;
+    border-radius: 4px;
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .action-buttons {
+    display: flex;
+    gap: 6px;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .action-buttons .el-button {
+    margin: 0;
+    font-size: 12px;
   }
 
   .batch-actions {

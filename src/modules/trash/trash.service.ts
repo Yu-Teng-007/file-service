@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, InternalServerErrorException } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
-import { join } from 'path'
+import { join, dirname } from 'path'
 import { promises as fs } from 'fs'
 import { v4 as uuidv4 } from 'uuid'
 import { TrashItemResponseDto, TrashStatsResponseDto } from '../../types/dto'
@@ -122,22 +122,25 @@ export class TrashService {
       try {
         // 恢复文件到原始位置
         if (item.originalFileInfo.path && item.physicalPath) {
-          // 确保目标目录存在
-          const targetDir = item.originalFileInfo.path.substring(
-            0,
-            item.originalFileInfo.path.lastIndexOf('/')
-          )
-          await fs.mkdir(targetDir, { recursive: true })
+          // 使用 dirname 获取目标目录，这样可以正确处理跨平台路径
+          const targetDir = dirname(item.originalFileInfo.path)
+          if (targetDir && targetDir !== '.' && targetDir !== item.originalFileInfo.path) {
+            await fs.mkdir(targetDir, { recursive: true })
+          }
 
           // 移动文件回原位置
           await fs.rename(item.physicalPath, item.originalFileInfo.path)
         }
+
+        // 恢复文件元数据到存储服务
+        await this.fileStorageService.restoreFileMetadata(item.originalFileInfo)
 
         // 从回收站记录中移除
         trashItems.splice(itemIndex, 1)
         restoredCount++
       } catch (error) {
         console.error(`恢复文件失败: ${fileId}`, error)
+        // 如果恢复失败，不要从回收站中移除该项目
       }
     }
 

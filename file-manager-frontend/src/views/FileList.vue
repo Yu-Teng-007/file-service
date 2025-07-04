@@ -614,7 +614,7 @@ const handleOperationComplete = (operation: string, count: number) => {
 
 // 回收站相关
 const handleFilesRestored = (count: number) => {
-  ElMessage.success(t('trash.restoreSuccess', { count }))
+  // 不显示消息，因为 TrashManager 已经显示了
   filesStore.refreshFiles()
 }
 

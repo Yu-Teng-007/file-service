@@ -365,6 +365,42 @@ export class FileStorageService {
   }
 
   /**
+   * 从元数据中移除文件记录（不删除物理文件）
+   * 用于将文件移动到回收站时
+   */
+  removeFileFromMetadata(fileId: string): void {
+    const metadata = this.fileMetadata.get(fileId)
+    if (!metadata) {
+      throw new NotFoundException('文件不存在')
+    }
+
+    // 只删除元数据，不删除物理文件
+    this.fileMetadata.delete(fileId)
+    // 异步保存元数据，不等待完成
+    this.saveMetadata().catch(error => {
+      console.error('保存元数据失败:', error)
+    })
+  }
+
+  /**
+   * 恢复文件元数据
+   * 用于从回收站恢复文件时
+   */
+  async restoreFileMetadata(fileInfo: UploadedFileInfo): Promise<void> {
+    // 恢复文件元数据
+    this.fileMetadata.set(fileInfo.id, {
+      ...fileInfo,
+      uploadedAt:
+        typeof fileInfo.uploadedAt === 'string'
+          ? fileInfo.uploadedAt
+          : fileInfo.uploadedAt.toISOString(),
+    })
+
+    // 保存元数据
+    await this.saveMetadata()
+  }
+
+  /**
    * 批量操作
    */
   async batchOperation(

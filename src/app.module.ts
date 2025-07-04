@@ -81,9 +81,10 @@ import { PerformanceMiddleware } from './modules/performance/performance.middlew
     ScheduleModule.forRoot(),
 
     // 功能模块
+    // 注意：TrashModule 必须在 FilesModule 之前，避免路由冲突
+    TrashModule,
     FilesModule,
     FoldersModule,
-    TrashModule,
     TagsModule,
     AuthModule,
     StorageModule,
