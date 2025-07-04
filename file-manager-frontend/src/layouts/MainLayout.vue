@@ -178,29 +178,37 @@ configStore.init()
 .main-layout :deep(.el-container) {
   height: 100%;
   width: 100%;
+  overflow: hidden;
 }
 
 .main-layout :deep(.el-aside) {
-  height: 100vh;
+  height: 100%;
+  overflow: hidden;
 }
 
 .main-layout :deep(.el-header) {
   height: 60px !important;
   padding: 0;
+  flex-shrink: 0;
 }
 
 .main-layout :deep(.el-main) {
-  height: calc(100vh - 60px);
+  height: calc(100% - 60px);
   padding: 0;
   overflow: hidden;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
 }
 
 .sidebar {
   background-color: var(--el-bg-color-page);
   border-right: 1px solid var(--el-border-color);
   transition: width 0.3s;
-  height: 100vh;
-  overflow-y: auto;
+  height: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .logo {
@@ -221,8 +229,9 @@ configStore.init()
 
 .sidebar-menu {
   border-right: none;
-  height: calc(100vh - 60px);
+  flex: 1;
   overflow-y: auto;
+  height: 0; /* 强制flex子元素计算高度 */
 }
 
 .header {
@@ -250,9 +259,10 @@ configStore.init()
 
 .main-content {
   background-color: var(--el-bg-color-page);
-  padding: 20px;
-  overflow-y: auto;
-  height: calc(100vh - 60px);
+  padding: 0;
+  overflow: hidden;
+  flex: 1;
   width: 100%;
+  height: 0; /* 强制flex子元素计算高度 */
 }
 </style>

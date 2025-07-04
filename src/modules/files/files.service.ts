@@ -405,4 +405,126 @@ export class FilesService {
       checksum: fileInfo.checksum,
     }
   }
+
+  /**
+   * 获取文件预览信息
+   */
+  async getFilePreviewInfo(id: string): Promise<any> {
+    const fileInfo = await this.storageService.getFileInfo(id)
+    if (!fileInfo) {
+      throw new FileNotFoundException(id)
+    }
+
+    const previewType = this.determinePreviewType(fileInfo.mimeType, fileInfo.originalName)
+    const baseUrl = this.configService.get<string>('API_BASE_URL') || 'http://localhost:3001'
+
+    const result = {
+      id: fileInfo.id,
+      type: previewType,
+      previewUrl: `${baseUrl}/api/files/${id}/preview`,
+      thumbnailUrl: previewType === 'image' ? `${baseUrl}/api/files/${id}/thumbnail` : undefined,
+      canEdit: previewType === 'image',
+      metadata: await this.extractFileMetadata(fileInfo),
+    }
+
+    return result
+  }
+
+  private determinePreviewType(mimeType: string, filename: string): string {
+    if (mimeType.startsWith('image/')) return 'image'
+    if (mimeType.startsWith('video/')) return 'video'
+    if (mimeType.startsWith('audio/')) return 'audio'
+    if (mimeType === 'application/pdf') return 'pdf'
+
+    const ext = filename.split('.').pop()?.toLowerCase()
+
+    // 文本文件
+    if (mimeType.startsWith('text/') || ['txt', 'md', 'log'].includes(ext)) {
+      return 'text'
+    }
+
+    // 代码文件
+    if (
+      [
+        'js',
+        'ts',
+        'vue',
+        'html',
+        'css',
+        'scss',
+        'json',
+        'xml',
+        'py',
+        'java',
+        'cpp',
+        'c',
+        'php',
+        'rb',
+        'go',
+        'rs',
+        'sql',
+        'yaml',
+        'yml',
+      ].includes(ext)
+    ) {
+      return 'code'
+    }
+
+    // Office文档
+    if (['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx'].includes(ext)) {
+      return 'office'
+    }
+
+    return 'unsupported'
+  }
+
+  private async extractFileMetadata(fileInfo: any): Promise<any> {
+    const metadata: any = {}
+
+    if (fileInfo.mimeType.startsWith('image/')) {
+      // 对于图片，可以提取尺寸信息
+      // 这里简化实现，实际应该使用图片处理库
+      metadata.dimensions = { width: 0, height: 0 }
+    }
+
+    if (fileInfo.mimeType.startsWith('video/') || fileInfo.mimeType.startsWith('audio/')) {
+      // 对于音视频，可以提取时长信息
+      // 这里简化实现，实际应该使用ffmpeg等工具
+      metadata.duration = 0
+    }
+
+    if (fileInfo.mimeType === 'application/pdf') {
+      // 对于PDF，可以提取页数
+      metadata.pages = 1
+    }
+
+    const ext = fileInfo.originalName.split('.').pop()?.toLowerCase()
+    if (
+      [
+        'js',
+        'ts',
+        'vue',
+        'html',
+        'css',
+        'scss',
+        'json',
+        'xml',
+        'py',
+        'java',
+        'cpp',
+        'c',
+        'php',
+        'rb',
+        'go',
+        'rs',
+        'sql',
+        'yaml',
+        'yml',
+      ].includes(ext)
+    ) {
+      metadata.language = ext
+    }
+
+    return metadata
+  }
 }

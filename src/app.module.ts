@@ -9,6 +9,9 @@ import { join } from 'path'
 import { AppController } from './app.controller'
 import { AppService } from './app.service'
 import { FilesModule } from './modules/files/files.module'
+import { FoldersModule } from './modules/folders/folders.module'
+import { TrashModule } from './modules/trash/trash.module'
+import { TagsModule } from './modules/tags/tags.module'
 import { CacheModule } from './modules/cache/cache.module'
 import { CDNModule } from './modules/cdn/cdn.module'
 import { ImageProcessingModule } from './modules/image-processing/image-processing.module'
@@ -79,6 +82,9 @@ import { PerformanceMiddleware } from './modules/performance/performance.middlew
 
     // 功能模块
     FilesModule,
+    FoldersModule,
+    TrashModule,
+    TagsModule,
     AuthModule,
     StorageModule,
     CacheModule,

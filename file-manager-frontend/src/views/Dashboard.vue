@@ -319,11 +319,13 @@ onMounted(() => {
 
 <style scoped>
 .dashboard {
-  height: calc(100vh - 60px);
+  height: 100%;
   width: 100%;
   padding: 20px;
   box-sizing: border-box;
   overflow-y: auto;
+  display: flex;
+  flex-direction: column;
 }
 
 .page-header {
@@ -383,8 +385,9 @@ onMounted(() => {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 20px;
-  height: calc(100vh - 300px);
+  flex: 1;
   min-height: 400px;
+  overflow: hidden;
 }
 
 .disk-usage-card,

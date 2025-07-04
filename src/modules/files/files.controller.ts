@@ -348,6 +348,63 @@ export class FilesController {
     return stream
   }
 
+  @Get(':id/preview-info')
+  @UseInterceptors(CacheInterceptor)
+  @Cacheable('file-preview-info:${id}', 300, ['file-preview'])
+  @ApiOperation({ summary: '获取文件预览信息', description: '获取文件的预览类型、元数据等信息' })
+  @ApiParam({ name: 'id', description: '文件ID' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: '获取文件预览信息成功',
+    schema: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean' },
+        message: { type: 'string' },
+        data: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', description: '文件ID' },
+            type: {
+              type: 'string',
+              enum: ['image', 'video', 'audio', 'pdf', 'text', 'code', 'office', 'unsupported'],
+              description: '预览类型',
+            },
+            previewUrl: { type: 'string', description: '预览URL' },
+            thumbnailUrl: { type: 'string', description: '缩略图URL' },
+            canEdit: { type: 'boolean', description: '是否可编辑' },
+            metadata: {
+              type: 'object',
+              properties: {
+                duration: { type: 'number', description: '视频/音频时长（秒）' },
+                dimensions: {
+                  type: 'object',
+                  properties: {
+                    width: { type: 'number' },
+                    height: { type: 'number' },
+                  },
+                  description: '图片/视频尺寸',
+                },
+                pages: { type: 'number', description: 'PDF页数' },
+                encoding: { type: 'string', description: '文本编码' },
+                language: { type: 'string', description: '代码语言' },
+              },
+            },
+          },
+        },
+      },
+    },
+  })
+  @ApiResponse({ status: HttpStatus.NOT_FOUND, description: '文件不存在' })
+  async getFilePreviewInfo(@Param('id', ParseUUIDPipe) id: string) {
+    const previewInfo = await this.filesService.getFilePreviewInfo(id)
+    return {
+      success: true,
+      message: '获取文件预览信息成功',
+      data: previewInfo,
+    }
+  }
+
   @Get(':id/content')
   @UseInterceptors(CacheInterceptor)
   @Cacheable('file-content:${id}:${mode}:${encoding}:${start}:${end}', 300, ['file-content'])
@@ -566,5 +623,63 @@ export class FilesController {
     })
 
     return stream
+  }
+
+  @Post('batch')
+  @ApiKeyAuth()
+  @ApiOperation({
+    summary: '批量操作文件',
+    description: '对多个文件执行批量操作（移动、复制、删除等）',
+  })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        action: {
+          type: 'string',
+          enum: ['delete', 'move', 'copy', 'restore', 'permanentDelete'],
+          description: '操作类型',
+        },
+        fileIds: {
+          type: 'array',
+          items: { type: 'string' },
+          description: '文件ID列表',
+        },
+        targetCategory: {
+          type: 'string',
+          enum: [
+            'images',
+            'videos',
+            'music',
+            'documents',
+            'archives',
+            'scripts',
+            'styles',
+            'fonts',
+          ],
+          description: '目标分类（移动/复制时使用）',
+        },
+        targetAccessLevel: {
+          type: 'string',
+          enum: ['public', 'private', 'protected'],
+          description: '目标访问级别（移动/复制时使用）',
+        },
+        targetPath: {
+          type: 'string',
+          description: '目标路径（移动/复制时使用）',
+        },
+      },
+      required: ['action', 'fileIds'],
+    },
+  })
+  private getActionName(action: string): string {
+    const actionNames = {
+      delete: '删除',
+      move: '移动',
+      copy: '复制',
+      restore: '恢复',
+      permanentDelete: '永久删除',
+    }
+    return actionNames[action] || action
   }
 }

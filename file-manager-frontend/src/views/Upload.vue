@@ -187,7 +187,7 @@ onMounted(() => {
 
 <style scoped>
 .upload-page {
-  height: calc(100vh - 60px);
+  height: 100%;
   width: 100%;
   padding: 20px;
   box-sizing: border-box;

@@ -6,6 +6,15 @@ import type {
   FileListResponse,
   ApiResponse,
   BatchOperation,
+  FolderInfo,
+  FolderCreateDto,
+  ImageProcessingOptions,
+  ImageProcessingResult,
+  FilePreviewInfo,
+  TrashItem,
+  FileVersion,
+  FileTag,
+  FileWithTags,
 } from '@/types/file'
 import type { SystemInfo } from '@/types/config'
 
@@ -183,6 +192,277 @@ export class FilesApi {
         },
       }
     }
+  }
+
+  // ==================== 文件夹管理 API ====================
+
+  /**
+   * 获取文件夹列表
+   */
+  static async getFolders(parentId?: string): Promise<FolderInfo[]> {
+    const params = new URLSearchParams()
+    if (parentId) params.append('parentId', parentId)
+
+    const response = await apiClient.get<ApiResponse<FolderInfo[]>>(`/folders?${params.toString()}`)
+    return response.data || []
+  }
+
+  /**
+   * 创建文件夹
+   */
+  static async createFolder(folderData: FolderCreateDto): Promise<FolderInfo> {
+    const response = await apiClient.post<ApiResponse<FolderInfo>>('/folders', folderData)
+    return response.data!
+  }
+
+  /**
+   * 删除文件夹
+   */
+  static async deleteFolder(id: string, force: boolean = false): Promise<void> {
+    await apiClient.delete<ApiResponse>(`/folders/${id}?force=${force}`)
+  }
+
+  /**
+   * 重命名文件夹
+   */
+  static async renameFolder(id: string, name: string): Promise<FolderInfo> {
+    const response = await apiClient.put<ApiResponse<FolderInfo>>(`/folders/${id}`, { name })
+    return response.data!
+  }
+
+  /**
+   * 移动文件到文件夹
+   */
+  static async moveFilesToFolder(fileIds: string[], folderId: string): Promise<void> {
+    await apiClient.post<ApiResponse>('/files/move', {
+      fileIds,
+      targetFolderId: folderId,
+    })
+  }
+
+  // ==================== 图片处理 API ====================
+
+  /**
+   * 处理图片
+   */
+  static async processImage(
+    file: File,
+    options: ImageProcessingOptions
+  ): Promise<ImageProcessingResult> {
+    const formData = new FormData()
+    formData.append('image', file)
+    formData.append('options', JSON.stringify(options))
+
+    const response = await apiClient.post<ApiResponse<ImageProcessingResult>>(
+      '/image-processing/process',
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      }
+    )
+    return response.data!
+  }
+
+  /**
+   * 生成缩略图
+   */
+  static async generateThumbnail(
+    fileId: string,
+    size: 'small' | 'medium' | 'large' = 'medium'
+  ): Promise<string> {
+    const response = await apiClient.post<ApiResponse<{ url: string }>>(
+      '/image-processing/thumbnails',
+      {
+        fileId,
+        size,
+      }
+    )
+    return response.data!.url
+  }
+
+  /**
+   * 压缩图片
+   */
+  static async compressImage(fileId: string, quality: number = 80): Promise<string> {
+    const response = await apiClient.post<ApiResponse<{ url: string }>>(
+      '/image-processing/compress',
+      {
+        fileId,
+        quality,
+      }
+    )
+    return response.data!.url
+  }
+
+  /**
+   * 调整图片尺寸
+   */
+  static async resizeImage(
+    file: File,
+    width: number,
+    height?: number
+  ): Promise<ImageProcessingResult> {
+    const formData = new FormData()
+    formData.append('image', file)
+    formData.append('width', width.toString())
+    if (height) formData.append('height', height.toString())
+
+    const response = await apiClient.post<ApiResponse<ImageProcessingResult>>(
+      '/image-processing/resize',
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      }
+    )
+    return response.data!
+  }
+
+  // ==================== 文件预览 API ====================
+
+  /**
+   * 获取文件预览信息
+   */
+  static async getFilePreviewInfo(id: string): Promise<FilePreviewInfo> {
+    const response = await apiClient.get<ApiResponse<FilePreviewInfo>>(`/files/${id}/preview-info`)
+    return response.data!
+  }
+
+  /**
+   * 获取文件内容（用于文本文件预览）
+   */
+  static async getFileContent(
+    id: string,
+    options?: {
+      mode?: 'full' | 'partial'
+      encoding?: string
+      start?: number
+      end?: number
+      maxSize?: number
+    }
+  ): Promise<{ content: string; fromCache: boolean; metadata: any }> {
+    const params = new URLSearchParams()
+    if (options?.mode) params.append('mode', options.mode)
+    if (options?.encoding) params.append('encoding', options.encoding)
+    if (options?.start !== undefined) params.append('start', options.start.toString())
+    if (options?.end !== undefined) params.append('end', options.end.toString())
+    if (options?.maxSize) params.append('maxSize', options.maxSize.toString())
+
+    const response = await apiClient.get<ApiResponse<any>>(
+      `/files/${id}/content?${params.toString()}`
+    )
+    return response.data!
+  }
+
+  // ==================== 回收站 API ====================
+
+  /**
+   * 获取回收站文件列表
+   */
+  static async getTrashFiles(): Promise<TrashItem[]> {
+    const response = await apiClient.get<ApiResponse<TrashItem[]>>('/files/trash')
+    return response.data || []
+  }
+
+  /**
+   * 从回收站恢复文件
+   */
+  static async restoreFromTrash(fileIds: string[]): Promise<void> {
+    await apiClient.post<ApiResponse>('/files/trash/restore', { fileIds })
+  }
+
+  /**
+   * 永久删除文件
+   */
+  static async permanentDeleteFiles(fileIds: string[]): Promise<void> {
+    await apiClient.delete<ApiResponse>('/files/trash/permanent', {
+      data: { fileIds },
+    })
+  }
+
+  /**
+   * 清空回收站
+   */
+  static async emptyTrash(): Promise<void> {
+    await apiClient.delete<ApiResponse>('/files/trash/empty')
+  }
+
+  // ==================== 标签管理 API ====================
+
+  /**
+   * 获取所有标签
+   */
+  static async getTags(): Promise<FileTag[]> {
+    const response = await apiClient.get<ApiResponse<FileTag[]>>('/tags')
+    return response.data || []
+  }
+
+  /**
+   * 创建标签
+   */
+  static async createTag(tag: Omit<FileTag, 'id'>): Promise<FileTag> {
+    const response = await apiClient.post<ApiResponse<FileTag>>('/tags', tag)
+    return response.data!
+  }
+
+  /**
+   * 为文件添加标签
+   */
+  static async addTagsToFile(fileId: string, tagIds: string[]): Promise<void> {
+    await apiClient.post<ApiResponse>(`/files/${fileId}/tags`, { tagIds })
+  }
+
+  /**
+   * 从文件移除标签
+   */
+  static async removeTagsFromFile(fileId: string, tagIds: string[]): Promise<void> {
+    await apiClient.delete<ApiResponse>(`/files/${fileId}/tags`, {
+      data: { tagIds },
+    })
+  }
+
+  // ==================== 文件版本 API ====================
+
+  /**
+   * 获取文件版本历史
+   */
+  static async getFileVersions(fileId: string): Promise<FileVersion[]> {
+    const response = await apiClient.get<ApiResponse<FileVersion[]>>(`/files/${fileId}/versions`)
+    return response.data || []
+  }
+
+  /**
+   * 创建文件版本
+   */
+  static async createFileVersion(
+    fileId: string,
+    file: File,
+    comment?: string
+  ): Promise<FileVersion> {
+    const formData = new FormData()
+    formData.append('file', file)
+    if (comment) formData.append('comment', comment)
+
+    const response = await apiClient.post<ApiResponse<FileVersion>>(
+      `/files/${fileId}/versions`,
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      }
+    )
+    return response.data!
+  }
+
+  /**
+   * 恢复到指定版本
+   */
+  static async restoreFileVersion(fileId: string, versionId: string): Promise<void> {
+    await apiClient.post<ApiResponse>(`/files/${fileId}/versions/${versionId}/restore`)
   }
 }
 

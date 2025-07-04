@@ -15,6 +15,7 @@ export const useFilesStore = defineStore('files', () => {
   const total = ref(0)
   const searchQuery = ref('')
   const categoryFilter = ref('')
+  const folderFilter = ref<string>()
   const sortBy = ref('uploadedAt')
   const sortOrder = ref<'asc' | 'desc'>('desc')
 
@@ -22,8 +23,8 @@ export const useFilesStore = defineStore('files', () => {
   const totalPages = computed(() => Math.ceil(total.value / pageSize.value))
   const hasSelection = computed(() => selectedFiles.value.length > 0)
   const selectedCount = computed(() => selectedFiles.value.length)
-  const isAllSelected = computed(() => 
-    files.value.length > 0 && selectedFiles.value.length === files.value.length
+  const isAllSelected = computed(
+    () => files.value.length > 0 && selectedFiles.value.length === files.value.length
   )
 
   // 方法
@@ -61,7 +62,7 @@ export const useFilesStore = defineStore('files', () => {
     onProgress?: (progress: number) => void
   ): Promise<FileInfo> => {
     const progressId = `${file.name}-${Date.now()}`
-    
+
     // 添加到上传进度列表
     uploadProgress.value.push({
       fileId: progressId,
@@ -72,8 +73,8 @@ export const useFilesStore = defineStore('files', () => {
 
     try {
       uploading.value = true
-      
-      const result = await FilesApi.uploadFile(file, options, (progress) => {
+
+      const result = await FilesApi.uploadFile(file, options, progress => {
         const item = uploadProgress.value.find(p => p.fileId === progressId)
         if (item) {
           item.progress = progress
@@ -90,7 +91,7 @@ export const useFilesStore = defineStore('files', () => {
 
       // 刷新文件列表
       await refreshFiles()
-      
+
       return result
     } catch (error) {
       // 更新上传状态
@@ -102,7 +103,7 @@ export const useFilesStore = defineStore('files', () => {
       throw error
     } finally {
       uploading.value = false
-      
+
       // 3秒后移除上传进度项
       setTimeout(() => {
         const index = uploadProgress.value.findIndex(p => p.fileId === progressId)
@@ -155,13 +156,13 @@ export const useFilesStore = defineStore('files', () => {
 
   const updateFile = async (id: string, updates: any) => {
     const result = await FilesApi.updateFile(id, updates)
-    
+
     // 更新本地文件列表
     const index = files.value.findIndex(f => f.id === id)
     if (index > -1) {
       files.value[index] = result
     }
-    
+
     return result
   }
 
@@ -229,6 +230,12 @@ export const useFilesStore = defineStore('files', () => {
     loadFiles()
   }
 
+  const setFolderFilter = (folderId?: string) => {
+    folderFilter.value = folderId
+    currentPage.value = 1
+    loadFiles()
+  }
+
   const setSorting = (field: string, order: 'asc' | 'desc') => {
     sortBy.value = field
     sortOrder.value = order
@@ -251,15 +258,16 @@ export const useFilesStore = defineStore('files', () => {
     total,
     searchQuery,
     categoryFilter,
+    folderFilter,
     sortBy,
     sortOrder,
-    
+
     // 计算属性
     totalPages,
     hasSelection,
     selectedCount,
     isAllSelected,
-    
+
     // 方法
     loadFiles,
     refreshFiles,
@@ -279,6 +287,7 @@ export const useFilesStore = defineStore('files', () => {
     setPageSize,
     setSearch,
     setCategoryFilter,
+    setFolderFilter,
     setSorting,
     clearUploadProgress,
   }
