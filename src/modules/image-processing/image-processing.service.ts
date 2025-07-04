@@ -11,6 +11,7 @@ import {
   ThumbnailResult,
   ResizeOptions,
   CompressOptions,
+  WatermarkOptions,
   FormatOptions,
   FilterOptions,
 } from './interfaces/image-processing.interface'
@@ -56,7 +57,7 @@ export class ImageProcessingService {
       let pipeline = sharp(inputPath)
 
       // 应用各种处理选项
-      pipeline = this.applyProcessingOptions(pipeline, options)
+      pipeline = await this.applyProcessingOptions(pipeline, options)
 
       // 处理并保存
       const buffer = await pipeline.toBuffer()
@@ -245,10 +246,10 @@ export class ImageProcessingService {
   /**
    * 应用处理选项
    */
-  private applyProcessingOptions(
+  private async applyProcessingOptions(
     pipeline: sharp.Sharp,
     options: ImageProcessingOptions
-  ): sharp.Sharp {
+  ): Promise<sharp.Sharp> {
     // 裁剪
     if (options.crop) {
       pipeline = pipeline.extract({
@@ -275,6 +276,11 @@ export class ImageProcessingService {
         withoutEnlargement: options.resize.withoutEnlargement,
         withoutReduction: options.resize.withoutReduction,
       })
+    }
+
+    // 水印
+    if (options.watermark) {
+      pipeline = await this.applyWatermark(pipeline, options.watermark)
     }
 
     // 滤镜效果
@@ -368,6 +374,127 @@ export class ImageProcessingService {
   }
 
   /**
+   * 应用水印
+   */
+  private async applyWatermark(
+    pipeline: sharp.Sharp,
+    watermark: WatermarkOptions
+  ): Promise<sharp.Sharp> {
+    if (!watermark.text && !watermark.image) {
+      return pipeline
+    }
+
+    try {
+      // 获取图片信息以计算水印位置
+      const metadata = await pipeline.metadata()
+      const { width = 800, height = 600 } = metadata
+
+      if (watermark.text) {
+        // 文字水印
+        const fontSize = watermark.fontSize || Math.max(width * 0.03, 24)
+        const fontColor = watermark.fontColor || '#ffffff'
+        const opacity = watermark.opacity || 0.5
+        const margin = watermark.margin || 20
+
+        // 计算水印位置
+        const position = this.calculateWatermarkPosition(
+          watermark.position || 'bottom-right',
+          width,
+          height,
+          margin
+        )
+
+        // 创建文字水印SVG
+        const textSvg = `
+          <svg width="${width}" height="${height}">
+            <text
+              x="${position.x}"
+              y="${position.y}"
+              font-family="${watermark.fontFamily || 'Arial'}"
+              font-size="${fontSize}"
+              fill="${fontColor}"
+              fill-opacity="${opacity}"
+              text-anchor="${position.anchor}"
+              dominant-baseline="${position.baseline}"
+            >${watermark.text}</text>
+          </svg>
+        `
+
+        // 应用文字水印
+        pipeline = pipeline.composite([
+          {
+            input: Buffer.from(textSvg),
+            blend: 'over',
+          },
+        ])
+      }
+
+      if (watermark.image) {
+        // 图片水印 (如果提供了图片路径)
+        const opacity = watermark.opacity || 0.5
+        const margin = watermark.margin || 20
+
+        const position = this.calculateWatermarkPosition(
+          watermark.position || 'bottom-right',
+          width,
+          height,
+          margin
+        )
+
+        // 应用图片水印
+        pipeline = pipeline.composite([
+          {
+            input: watermark.image,
+            left: position.x,
+            top: position.y,
+            blend: 'over',
+          },
+        ])
+      }
+
+      return pipeline
+    } catch (error) {
+      this.logger.error('应用水印失败', error)
+      return pipeline
+    }
+  }
+
+  /**
+   * 计算水印位置
+   */
+  private calculateWatermarkPosition(
+    position: string,
+    imageWidth: number,
+    imageHeight: number,
+    margin: number
+  ): { x: number; y: number; anchor: string; baseline: string } {
+    switch (position) {
+      case 'top-left':
+        return { x: margin, y: margin + 20, anchor: 'start', baseline: 'hanging' }
+      case 'top-right':
+        return { x: imageWidth - margin, y: margin + 20, anchor: 'end', baseline: 'hanging' }
+      case 'bottom-left':
+        return { x: margin, y: imageHeight - margin, anchor: 'start', baseline: 'baseline' }
+      case 'bottom-right':
+        return {
+          x: imageWidth - margin,
+          y: imageHeight - margin,
+          anchor: 'end',
+          baseline: 'baseline',
+        }
+      case 'center':
+        return { x: imageWidth / 2, y: imageHeight / 2, anchor: 'middle', baseline: 'central' }
+      default:
+        return {
+          x: imageWidth - margin,
+          y: imageHeight - margin,
+          anchor: 'end',
+          baseline: 'baseline',
+        }
+    }
+  }
+
+  /**
    * 应用压缩
    */
   private applyCompression(pipeline: sharp.Sharp, compress: CompressOptions): sharp.Sharp {
@@ -385,7 +512,15 @@ export class ImageProcessingService {
     processedUrl: string,
     filename: string,
     folderId?: string
-  ): Promise<{ fileId: string; url: string }> {
+  ): Promise<{
+    fileId: string
+    url: string
+    size: number
+    filename: string
+    originalName: string
+    mimeType: string
+    path: string
+  }> {
     try {
       this.logger.log(`开始保存处理后的图片: ${processedUrl}`)
 
@@ -401,9 +536,13 @@ export class ImageProcessingService {
       // 验证临时文件是否存在
       await fs.access(tempPath)
 
+      // 获取文件信息
+      const stats = await fs.stat(tempPath)
+      const fileSize = stats.size
+
       // 生成新的文件路径
       const uploadDir = this.configService.get('UPLOAD_DIR') || 'uploads'
-      const targetDir = folderId ? join(uploadDir, 'images', folderId) : join(uploadDir, 'images')
+      const targetDir = join(uploadDir, 'files')
       await fs.mkdir(targetDir, { recursive: true })
 
       // 生成唯一文件名
@@ -416,7 +555,7 @@ export class ImageProcessingService {
       await fs.copyFile(tempPath, targetPath)
 
       // 生成访问URL
-      const fileUrl = `/uploads/images/${folderId ? folderId + '/' : ''}${uniqueFilename}`
+      const fileUrl = `/uploads/files/${uniqueFilename}`
 
       // 清理临时文件
       try {
@@ -428,8 +567,13 @@ export class ImageProcessingService {
       this.logger.log(`图片保存成功: ${targetPath}`)
 
       return {
-        fileId: uniqueFilename.replace(ext, ''),
+        fileId: uniqueFilename,
         url: fileUrl,
+        size: fileSize,
+        filename: uniqueFilename,
+        originalName: filename,
+        mimeType: `image/${ext.replace('.', '')}`,
+        path: targetPath,
       }
     } catch (error) {
       this.logger.error(`保存处理后图片失败: ${processedUrl}`, error)

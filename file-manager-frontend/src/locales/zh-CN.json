@@ -175,8 +175,14 @@
     "previewError": "预览生成失败",
     "saveSuccess": "图片保存成功",
     "saveError": "图片保存失败",
+    "loadError": "图片加载失败",
     "noProcessedImage": "请先预览处理效果",
-    "loadError": "图片加载失败"
+    "saveOptions": "保存选项",
+    "saveMode": "保存模式",
+    "createNew": "创建新文件",
+    "overwrite": "覆盖原文件",
+    "filename": "文件名",
+    "filenamePlaceholder": "请输入文件名（可选）"
   },
   "preview": {
     "title": "文件预览",

@@ -30,11 +30,11 @@
               style="width: 100px"
             />
             <el-select v-model="options.resize.fit" size="small" style="width: 100px">
-              <el-option label="Cover" value="cover" />
-              <el-option label="Contain" value="contain" />
-              <el-option label="Fill" value="fill" />
-              <el-option label="Inside" value="inside" />
-              <el-option label="Outside" value="outside" />
+              <el-option label="覆盖" value="cover" />
+              <el-option label="包含" value="contain" />
+              <el-option label="填充" value="fill" />
+              <el-option label="内部" value="inside" />
+              <el-option label="外部" value="outside" />
             </el-select>
           </div>
 
@@ -145,15 +145,39 @@
                   </el-form-item>
                   <el-form-item :label="$t('imageEditor.position')">
                     <el-select v-model="options.watermark.position">
-                      <el-option label="Top Left" value="top-left" />
-                      <el-option label="Top Right" value="top-right" />
-                      <el-option label="Bottom Left" value="bottom-left" />
-                      <el-option label="Bottom Right" value="bottom-right" />
-                      <el-option label="Center" value="center" />
+                      <el-option label="左上角" value="top-left" />
+                      <el-option label="右上角" value="top-right" />
+                      <el-option label="左下角" value="bottom-left" />
+                      <el-option label="右下角" value="bottom-right" />
+                      <el-option label="居中" value="center" />
                     </el-select>
                   </el-form-item>
                   <el-form-item :label="$t('imageEditor.opacity')">
                     <el-slider v-model="options.watermark.opacity" :min="0" :max="1" :step="0.1" />
+                  </el-form-item>
+                </el-form>
+              </div>
+            </el-collapse-item>
+          </el-collapse>
+        </div>
+
+        <!-- 保存选项 -->
+        <div class="save-options-section">
+          <el-collapse>
+            <el-collapse-item :title="$t('imageEditor.saveOptions')" name="saveOptions">
+              <div class="save-options-controls">
+                <el-form label-width="100px" size="small">
+                  <el-form-item :label="$t('imageEditor.saveMode')">
+                    <el-radio-group v-model="saveMode">
+                      <el-radio value="new">{{ $t('imageEditor.createNew') }}</el-radio>
+                      <el-radio value="overwrite">{{ $t('imageEditor.overwrite') }}</el-radio>
+                    </el-radio-group>
+                  </el-form-item>
+                  <el-form-item v-if="saveMode === 'new'" :label="$t('imageEditor.filename')">
+                    <el-input
+                      v-model="customFilename"
+                      :placeholder="$t('imageEditor.filenamePlaceholder')"
+                    />
                   </el-form-item>
                 </el-form>
               </div>
@@ -229,6 +253,10 @@ const originalFile = ref<File>()
 const originalInfo = ref<any>()
 const processedInfo = ref<any>()
 const processedResult = ref<ImageProcessingResult>()
+
+// Save options
+const saveMode = ref<'new' | 'overwrite'>('new')
+const customFilename = ref('')
 
 // Options
 const options = reactive<ImageProcessingOptions>({
@@ -374,17 +402,40 @@ const handleSave = async () => {
   try {
     saving.value = true
 
-    // 生成保存的文件名
-    const originalName = originalFile.value?.name || 'processed_image'
-    const ext = originalName.split('.').pop() || 'jpg'
-    const baseName = originalName.replace(`.${ext}`, '')
-    const filename = `${baseName}_processed.${ext}`
+    let filename: string
+    let shouldOverwrite = false
+
+    if (saveMode.value === 'overwrite') {
+      // 覆盖模式：使用原始文件名
+      filename = originalFile.value?.name || 'processed_image.jpg'
+      shouldOverwrite = true
+    } else {
+      // 新建模式：使用自定义文件名或生成新文件名
+      if (customFilename.value.trim()) {
+        const originalName = originalFile.value?.name || 'processed_image.jpg'
+        const ext = originalName.split('.').pop() || 'jpg'
+        const customName = customFilename.value.trim()
+        // 如果用户没有输入扩展名，自动添加
+        filename = customName.includes('.') ? customName : `${customName}.${ext}`
+      } else {
+        const originalName = originalFile.value?.name || 'processed_image'
+        const ext = originalName.split('.').pop() || 'jpg'
+        const baseName = originalName.replace(`.${ext}`, '')
+        filename = `${baseName}_processed.${ext}`
+      }
+    }
 
     // 调用API保存处理后的图片
-    const result = await FilesApi.saveProcessedImage(processedResult.value.processedUrl, filename)
+    const result = await FilesApi.saveProcessedImage(
+      processedResult.value.processedUrl,
+      filename,
+      undefined, // folderId
+      shouldOverwrite,
+      props.fileId // 原始文件ID，用于覆盖
+    )
 
     ElMessage.success(t('imageEditor.saveSuccess'))
-    emit('saved', { ...processedResult.value, savedFile: result })
+    emit('saved', { ...processedResult.value, savedFile: result, overwritten: shouldOverwrite })
     handleClose()
   } catch (error) {
     console.error('Failed to save image:', error)
@@ -402,6 +453,14 @@ const handleClose = () => {
   if (processedImageUrl.value && processedImageUrl.value.startsWith('blob:')) {
     URL.revokeObjectURL(processedImageUrl.value)
   }
+
+  // 重置状态
+  processedImageUrl.value = ''
+  processedResult.value = undefined
+  originalImageUrl.value = ''
+  originalFile.value = undefined
+  saveMode.value = 'new'
+  customFilename.value = ''
 
   visible.value = false
 }
@@ -508,6 +567,15 @@ watch(() => props.fileId, loadOriginalImage, { immediate: true })
   }
 
   .watermark-controls {
+    padding: 16px 0;
+  }
+
+  .save-options-section {
+    border-top: 1px solid var(--el-border-color-light);
+    padding-top: 16px;
+  }
+
+  .save-options-controls {
     padding: 16px 0;
   }
 

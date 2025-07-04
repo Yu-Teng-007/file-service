@@ -16,6 +16,7 @@ import { ErrorRecoveryService } from '../../common/services/error-recovery.servi
 import { ConfigService } from '@nestjs/config'
 import { promises as fs, createReadStream } from 'fs'
 import { join } from 'path'
+import { v4 as uuidv4 } from 'uuid'
 
 import { FileValidationService } from './file-validation.service'
 import { FileStorageService } from './file-storage.service'
@@ -25,6 +26,7 @@ import {
   FileSearchQuery,
   FileBatchOperation,
   FileStats,
+  FileAccessLevel,
 } from '../../types/file.types'
 import {
   FileUploadDto,
@@ -216,6 +218,58 @@ export class FilesService {
     if (metadata) updates.metadata = metadata
 
     const fileInfo = await this.storageService.updateFileInfo(id, updates)
+    return this.mapToResponseDto(fileInfo)
+  }
+
+  /**
+   * 创建文件记录
+   */
+  async createFileRecord(fileData: {
+    filename: string
+    originalName: string
+    mimeType: string
+    size: number
+    path: string
+    folderId?: string | null
+  }): Promise<FileResponseDto> {
+    const fileId = uuidv4()
+    // 根据MIME类型确定分类
+    let category = 'files' as any
+    if (fileData.mimeType.startsWith('image/')) {
+      category = 'images'
+    } else if (fileData.mimeType.startsWith('video/')) {
+      category = 'videos'
+    } else if (fileData.mimeType.startsWith('audio/')) {
+      category = 'music'
+    } else if (fileData.mimeType.includes('document') || fileData.mimeType.includes('pdf')) {
+      category = 'documents'
+    }
+
+    const fileInfo: UploadedFileInfo = {
+      id: fileId,
+      originalName: fileData.originalName,
+      filename: fileData.filename,
+      path: fileData.path,
+      url: `/uploads/files/${fileData.filename}`,
+      category,
+      accessLevel: FileAccessLevel.PUBLIC,
+      size: fileData.size,
+      mimeType: fileData.mimeType,
+      uploadedAt: new Date(),
+      folderId: fileData.folderId,
+    }
+
+    // 直接添加到存储服务的内存映射中
+    const metadata = {
+      ...fileInfo,
+      uploadedAt: fileInfo.uploadedAt.toISOString(),
+    }
+
+    // 使用反射访问私有方法来保存元数据
+    const storageService = this.storageService as any
+    storageService.fileMetadata.set(fileId, metadata)
+    await storageService.saveMetadata()
+
     return this.mapToResponseDto(fileInfo)
   }
 

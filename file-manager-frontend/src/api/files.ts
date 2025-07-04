@@ -348,7 +348,9 @@ export class FilesApi {
   static async saveProcessedImage(
     processedUrl: string,
     filename: string,
-    folderId?: string
+    folderId?: string,
+    overwrite?: boolean,
+    originalFileId?: string
   ): Promise<{ fileId: string; url: string }> {
     const response = await apiClient.post<ApiResponse<{ fileId: string; url: string }>>(
       '/image-processing/save-processed',
@@ -356,6 +358,8 @@ export class FilesApi {
         processedUrl,
         filename,
         folderId,
+        overwrite,
+        originalFileId,
       }
     )
     return response.data!

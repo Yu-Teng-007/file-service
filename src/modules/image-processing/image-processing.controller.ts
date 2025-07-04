@@ -23,6 +23,7 @@ import {
   ApiQuery,
 } from '@nestjs/swagger'
 import { ImageProcessingService } from './image-processing.service'
+import { FilesService } from '../files/files.service'
 import {
   ImageProcessingOptions,
   ThumbnailOptions,
@@ -54,7 +55,10 @@ export class ThumbnailDto {
 @ApiTags('image-processing')
 @Controller('image-processing')
 export class ImageProcessingController {
-  constructor(private readonly imageProcessingService: ImageProcessingService) {}
+  constructor(
+    private readonly imageProcessingService: ImageProcessingService,
+    private readonly filesService: FilesService
+  ) {}
 
   @Post('process')
   @UseInterceptors(FileInterceptor('image'))
@@ -422,22 +426,67 @@ export class ImageProcessingController {
   async saveProcessedImage(
     @Body('processedUrl') processedUrl: string,
     @Body('filename') filename: string,
-    @Body('folderId') folderId?: string
+    @Body('folderId') folderId?: string,
+    @Body('overwrite') overwrite?: boolean,
+    @Body('originalFileId') originalFileId?: string
   ) {
     if (!processedUrl || !filename) {
       throw new BadRequestException('请提供处理后图片URL和文件名')
     }
 
-    const result = await this.imageProcessingService.saveProcessedImage(
-      processedUrl,
-      filename,
-      folderId
-    )
+    if (overwrite && !originalFileId) {
+      throw new BadRequestException('覆盖模式需要提供原始文件ID')
+    }
 
-    return {
-      success: true,
-      message: '图片保存成功',
-      data: result,
+    if (overwrite && originalFileId) {
+      // 覆盖模式：更新现有文件
+      const fileResult = await this.imageProcessingService.saveProcessedImage(
+        processedUrl,
+        filename,
+        folderId
+      )
+
+      // 更新现有文件记录
+      const updatedFile = await this.filesService.updateFile(originalFileId, {
+        filename: fileResult.originalName,
+      })
+
+      return {
+        success: true,
+        message: '图片覆盖成功',
+        data: {
+          ...fileResult,
+          id: originalFileId,
+          overwritten: true,
+        },
+      }
+    } else {
+      // 新建模式：创建新文件
+      const fileResult = await this.imageProcessingService.saveProcessedImage(
+        processedUrl,
+        filename,
+        folderId
+      )
+
+      // 将文件信息添加到数据库
+      const fileRecord = await this.filesService.createFileRecord({
+        filename: fileResult.filename,
+        originalName: fileResult.originalName,
+        mimeType: fileResult.mimeType,
+        size: fileResult.size,
+        path: fileResult.path,
+        folderId: folderId || null,
+      })
+
+      return {
+        success: true,
+        message: '图片保存成功',
+        data: {
+          ...fileResult,
+          id: fileRecord.id,
+          overwritten: false,
+        },
+      }
     }
   }
 }

@@ -620,7 +620,7 @@ const handleFilesRestored = (count: number) => {
 
 // 图片编辑完成
 const handleImageSaved = () => {
-  ElMessage.success(t('imageEditor.saveSuccess'))
+  // 不显示消息，因为 ImageEditor 已经显示了
   filesStore.refreshFiles()
   showImageEditor.value = false
 }

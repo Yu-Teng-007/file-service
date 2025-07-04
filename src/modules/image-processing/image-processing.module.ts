@@ -6,10 +6,12 @@ import { extname, join } from 'path'
 import { v4 as uuidv4 } from 'uuid'
 import { ImageProcessingService } from './image-processing.service'
 import { ImageProcessingController } from './image-processing.controller'
+import { FilesModule } from '../files/files.module'
 
 @Module({
   imports: [
     ConfigModule,
+    FilesModule,
     MulterModule.register({
       storage: diskStorage({
         destination: (req, file, cb) => {
