@@ -434,13 +434,24 @@ const toggleFileSelection = (id: string) => {
 const handleFolderSelect = (folder: FolderInfo | null) => {
   currentFolderId.value = folder?.id
   updateBreadcrumbPath(folder)
-  // 根据文件夹筛选文件
-  filesStore.setFolderFilter(folder?.id)
+  // 根据文件夹筛选文件，【全部】文件夹显示所有文件
+  if (folder?.id === 'all') {
+    filesStore.setFolderFilter(undefined) // 不设置筛选，显示所有文件
+  } else {
+    filesStore.setFolderFilter(folder?.id)
+  }
+  // setFolderFilter 内部已经调用了 loadFiles()，不需要再调用 refreshFiles()
 }
 
 const updateBreadcrumbPath = (folder: FolderInfo | null) => {
   if (!folder) {
     breadcrumbPath.value = []
+    return
+  }
+
+  // 【全部】文件夹只显示自己
+  if (folder.id === 'all') {
+    breadcrumbPath.value = [folder]
     return
   }
 
@@ -461,23 +472,25 @@ const findFolderById = (id: string): FolderInfo | null => {
 
 const handleFolderCreated = (folder: FolderInfo) => {
   // 成功提示已在 FolderTree 组件中显示，这里不需要重复显示
-  // 刷新文件列表，因为可能影响当前文件夹的显示
-  filesStore.refreshFiles()
+  // 文件夹创建不影响当前文件列表，无需刷新
 }
 
 const handleFolderUpdated = (folder: FolderInfo) => {
   // 成功提示已在 FolderTree 组件中显示，这里不需要重复显示
-  // 刷新文件列表，因为文件夹信息可能影响面包屑导航
-  filesStore.refreshFiles()
+  // 文件夹重命名不影响当前文件列表，无需刷新
 }
 
 const handleFolderDeleted = (folderId: string) => {
   if (currentFolderId.value === folderId) {
-    handleFolderSelect(null)
+    // 如果删除的是当前选中的文件夹，切换到【全部】文件夹
+    const allFolder = foldersStore.folderTree.find(folder => folder.id === 'all')
+    if (allFolder) {
+      handleFolderSelect(allFolder)
+    } else {
+      handleFolderSelect(null)
+    }
   }
   // 成功提示已在 FolderTree 组件中显示，这里不需要重复显示
-  // 刷新文件列表，因为删除的文件夹可能影响当前显示
-  filesStore.refreshFiles()
 }
 
 // 文件预览和编辑
@@ -614,7 +627,8 @@ watch(
 
 // 生命周期
 onMounted(() => {
-  filesStore.loadFiles()
+  // 不在这里加载文件，等待文件夹选择后再加载
+  // filesStore.loadFiles()
 })
 </script>
 

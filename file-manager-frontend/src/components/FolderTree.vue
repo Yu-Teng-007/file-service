@@ -20,10 +20,25 @@
         @node-contextmenu="handleContextMenu"
       >
         <template #default="{ node, data }">
-          <div class="tree-node">
+          <div class="tree-node" :class="{ 'system-folder': data.isSystem }">
             <el-icon class="node-icon">
-              <Folder v-if="!node.expanded" />
-              <FolderOpened v-else />
+              <!-- 【全部】文件夹使用特殊图标 -->
+              <template v-if="data.isSystem">
+                <svg viewBox="0 0 1024 1024" width="1em" height="1em">
+                  <path
+                    fill="currentColor"
+                    d="M128 384v448h768V384H128zm-32-64h832a32 32 0 0 1 32 32v512a32 32 0 0 1-32 32H96a32 32 0 0 1-32-32V352a32 32 0 0 1 32-32z"
+                  />
+                  <path
+                    fill="currentColor"
+                    d="M384 128v192h256V128H384zm-32-64h320a32 32 0 0 1 32 32v256a32 32 0 0 1-32 32H352a32 32 0 0 1-32-32V96a32 32 0 0 1 32-32z"
+                  />
+                </svg>
+              </template>
+              <template v-else>
+                <Folder v-if="!node.expanded" />
+                <FolderOpened v-else />
+              </template>
             </el-icon>
             <span class="node-label">{{ data.name }}</span>
             <span class="node-count">({{ data.fileCount }})</span>
@@ -121,15 +136,18 @@
           <el-icon><Plus /></el-icon>
           <span>{{ $t('folder.create') }}</span>
         </div>
-        <div class="menu-item" @click="handleContextCommand('rename')">
-          <el-icon><Edit /></el-icon>
-          <span>{{ $t('folder.rename') }}</span>
-        </div>
-        <el-divider style="margin: 8px 0" />
-        <div class="menu-item danger" @click="handleContextCommand('delete')">
-          <el-icon><Delete /></el-icon>
-          <span>{{ $t('folder.delete') }}</span>
-        </div>
+        <!-- 系统文件夹不能重命名和删除 -->
+        <template v-if="!selectedNode?.data?.isSystem">
+          <div class="menu-item" @click="handleContextCommand('rename')">
+            <el-icon><Edit /></el-icon>
+            <span>{{ $t('folder.rename') }}</span>
+          </div>
+          <el-divider style="margin: 8px 0" />
+          <div class="menu-item danger" @click="handleContextCommand('delete')">
+            <el-icon><Delete /></el-icon>
+            <span>{{ $t('folder.delete') }}</span>
+          </div>
+        </template>
       </el-card>
     </div>
 
@@ -158,7 +176,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, nextTick } from 'vue'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 import {
   Plus,
@@ -299,6 +317,12 @@ const handleContextCommand = (command: string) => {
   // 关闭右键菜单
   showContextMenu.value = false
 
+  // 系统文件夹不能重命名和删除
+  if (selectedNode.value.data.isSystem && (command === 'rename' || command === 'delete')) {
+    ElMessage.warning('系统文件夹不能进行此操作')
+    return
+  }
+
   switch (command) {
     case 'create':
       createForm.parentId = selectedNode.value.data.id
@@ -389,8 +413,18 @@ const handleDelete = async () => {
 }
 
 // Lifecycle
-onMounted(() => {
-  loadFolders()
+onMounted(async () => {
+  await loadFolders()
+  // 默认选择【全部】文件夹
+  nextTick(() => {
+    const allFolder = foldersStore.folderTree.find(folder => folder.id === 'all')
+    if (allFolder && treeRef.value) {
+      // 设置树的当前选中节点
+      treeRef.value.setCurrentKey('all')
+      // 触发文件夹选择事件
+      emit('folder-select', allFolder)
+    }
+  })
 })
 
 // Expose methods
@@ -431,6 +465,19 @@ defineExpose({
   align-items: center;
   gap: 8px;
   width: 100%;
+
+  /* 系统文件夹样式 */
+  &.system-folder {
+    font-weight: 600;
+
+    .node-icon {
+      color: var(--el-color-warning);
+    }
+
+    .node-label {
+      color: var(--el-color-warning-dark-2);
+    }
+  }
 }
 
 .node-icon {

@@ -96,6 +96,7 @@ export interface FolderInfo {
   totalSize: number
   createdAt: string
   updatedAt: string
+  isSystem?: boolean // 标识是否为系统默认文件夹
 }
 
 export interface FolderCreateDto {

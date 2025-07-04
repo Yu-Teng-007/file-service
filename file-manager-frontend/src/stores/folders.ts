@@ -9,13 +9,13 @@ export const useFoldersStore = defineStore('folders', () => {
   const loading = ref(false)
   const lastLoadTime = ref<number>(0)
   const loadPromise = ref<Promise<FolderInfo[]> | null>(null)
-  
+
   // 缓存时间（5分钟）
   const CACHE_DURATION = 5 * 60 * 1000
 
   // 计算属性
   const folderTree = computed(() => buildTree(folders.value))
-  
+
   // 是否需要重新加载
   const needsReload = computed(() => {
     return Date.now() - lastLoadTime.value > CACHE_DURATION
@@ -34,7 +34,7 @@ export const useFoldersStore = defineStore('folders', () => {
     }
 
     loading.value = true
-    
+
     // 创建加载 Promise
     loadPromise.value = (async () => {
       try {
@@ -58,6 +58,23 @@ export const useFoldersStore = defineStore('folders', () => {
     const map = new Map<string, FolderInfo>()
     const roots: FolderInfo[] = []
 
+    // 添加【全部】默认文件夹
+    const allFolder: FolderInfo = {
+      id: 'all',
+      name: '全部',
+      path: '/',
+      fileCount: 0, // 这里可以计算所有文件的总数
+      totalSize: 0,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      isSystem: true,
+      children: [],
+    }
+
+    // 计算所有文件夹的文件总数
+    allFolder.fileCount = folders.reduce((total, folder) => total + folder.fileCount, 0)
+    allFolder.totalSize = folders.reduce((total, folder) => total + folder.totalSize, 0)
+
     folders.forEach(folder => {
       map.set(folder.id, { ...folder, children: [] })
     })
@@ -73,7 +90,8 @@ export const useFoldersStore = defineStore('folders', () => {
       }
     })
 
-    return roots
+    // 将【全部】文件夹放在最前面
+    return [allFolder, ...roots]
   }
 
   const addFolder = (folder: FolderInfo) => {
@@ -101,7 +119,7 @@ export const useFoldersStore = defineStore('folders', () => {
     loading,
     folderTree,
     needsReload,
-    
+
     // 方法
     loadFolders,
     addFolder,
