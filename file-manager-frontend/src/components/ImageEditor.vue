@@ -29,11 +29,7 @@
               size="small"
               style="width: 100px"
             />
-            <el-select
-              v-model="options.resize.fit"
-              size="small"
-              style="width: 100px"
-            >
+            <el-select v-model="options.resize.fit" size="small" style="width: 100px">
               <el-option label="Cover" value="cover" />
               <el-option label="Contain" value="contain" />
               <el-option label="Fill" value="fill" />
@@ -60,11 +56,7 @@
 
           <div class="toolbar-section">
             <span class="section-title">{{ $t('imageEditor.format') }}</span>
-            <el-select
-              v-model="options.format"
-              size="small"
-              style="width: 100px"
-            >
+            <el-select v-model="options.format" size="small" style="width: 100px">
               <el-option label="JPEG" value="jpeg" />
               <el-option label="PNG" value="png" />
               <el-option label="WebP" value="webp" />
@@ -115,6 +107,8 @@
                 :src="processedImageUrl"
                 :alt="$t('imageEditor.processedImage')"
                 class="preview-image"
+                @error="handleImageError"
+                @load="handleImageLoad"
               />
               <div v-else class="image-placeholder">
                 <el-icon size="48"><Picture /></el-icon>
@@ -126,10 +120,12 @@
                 {{ $t('imageEditor.size') }}: {{ processedInfo.width }} × {{ processedInfo.height }}
               </p>
               <p v-if="processedResult">
-                {{ $t('imageEditor.fileSize') }}: {{ formatFileSize(processedResult.processedSize) }}
+                {{ $t('imageEditor.fileSize') }}:
+                {{ formatFileSize(processedResult.processedSize) }}
               </p>
               <p v-if="processedResult && processedResult.compressionRatio">
-                {{ $t('imageEditor.compressionRatio') }}: {{ (processedResult.compressionRatio * 100).toFixed(1) }}%
+                {{ $t('imageEditor.compressionRatio') }}:
+                {{ (processedResult.compressionRatio * 100).toFixed(1) }}%
               </p>
             </div>
           </div>
@@ -157,12 +153,7 @@
                     </el-select>
                   </el-form-item>
                   <el-form-item :label="$t('imageEditor.opacity')">
-                    <el-slider
-                      v-model="options.watermark.opacity"
-                      :min="0"
-                      :max="1"
-                      :step="0.1"
-                    />
+                    <el-slider v-model="options.watermark.opacity" :min="0" :max="1" :step="0.1" />
                   </el-form-item>
                 </el-form>
               </div>
@@ -226,7 +217,7 @@ const { t } = useI18n()
 // Computed
 const visible = computed({
   get: () => props.modelValue,
-  set: (value) => emit('update:modelValue', value),
+  set: value => emit('update:modelValue', value),
 })
 
 // State
@@ -268,11 +259,11 @@ const formatFileSize = (bytes: number): string => {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
 }
 
-const loadOriginalImage = () => {
+const loadOriginalImage = async () => {
   if (props.file) {
     originalFile.value = props.file
     originalImageUrl.value = URL.createObjectURL(props.file)
-    
+
     // Get image dimensions
     const img = new Image()
     img.onload = () => {
@@ -286,7 +277,38 @@ const loadOriginalImage = () => {
     }
     img.src = originalImageUrl.value
   } else if (props.fileId) {
-    originalImageUrl.value = FilesApi.getPreviewUrl(props.fileId)
+    try {
+      // 获取文件信息和预览URL
+      originalImageUrl.value = FilesApi.getPreviewUrl(props.fileId)
+
+      // 从预览URL获取文件blob并转换为File对象
+      const response = await fetch(originalImageUrl.value, {
+        headers: {
+          'x-api-key': import.meta.env.VITE_API_KEY,
+        },
+      })
+      const blob = await response.blob()
+
+      // 获取文件信息以获取原始文件名
+      const fileInfo = await FilesApi.getFileInfo(props.fileId)
+      originalFile.value = new File([blob], fileInfo.originalName, { type: blob.type })
+
+      // Get image dimensions
+      const img = new Image()
+      img.onload = () => {
+        originalInfo.value = {
+          width: img.width,
+          height: img.height,
+        }
+        // Set default resize dimensions
+        options.resize.width = img.width
+        options.resize.height = img.height
+      }
+      img.src = originalImageUrl.value
+    } catch (error) {
+      console.error('Failed to load image from fileId:', error)
+      ElMessage.error(t('imageEditor.loadError'))
+    }
   }
 }
 
@@ -298,7 +320,7 @@ const handlePreview = async () => {
 
   try {
     processing.value = true
-    
+
     // Clean up options - remove empty values
     const cleanOptions = { ...options }
     if (!cleanOptions.watermark?.text) {
@@ -310,12 +332,21 @@ const handlePreview = async () => {
 
     const result = await FilesApi.processImage(originalFile.value, cleanOptions)
     processedResult.value = result
-    
-    // Create preview URL for processed image
-    // Note: This would need to be implemented in the backend to return the processed image
-    processedImageUrl.value = originalImageUrl.value // Placeholder
+
+    // 使用后端返回的处理后图片URL
+    console.log('API Response:', result)
+    if (result.processedUrl) {
+      // 处理后的图片URL不需要/api前缀，因为它是静态文件
+      const baseUrl = import.meta.env.VITE_API_BASE_URL.replace('/api', '')
+      processedImageUrl.value = `${baseUrl}${result.processedUrl}`
+      console.log('Processed image URL:', processedImageUrl.value)
+    } else {
+      console.error('No processedUrl in response:', result)
+      ElMessage.error('处理后的图片URL缺失')
+      return
+    }
     processedInfo.value = result.info
-    
+
     ElMessage.success(t('imageEditor.previewSuccess'))
   } catch (error) {
     console.error('Failed to process image:', error)
@@ -325,20 +356,35 @@ const handlePreview = async () => {
   }
 }
 
+const handleImageError = (event: Event) => {
+  console.error('Failed to load processed image:', event)
+  console.error('Image URL:', processedImageUrl.value)
+}
+
+const handleImageLoad = () => {
+  console.log('Processed image loaded successfully')
+}
+
 const handleSave = async () => {
-  if (!processedResult.value) {
+  if (!processedResult.value || !processedResult.value.processedUrl) {
     ElMessage.warning(t('imageEditor.noProcessedImage'))
     return
   }
 
   try {
     saving.value = true
-    
-    // Here you would implement the save logic
-    // This might involve uploading the processed image as a new file
-    
+
+    // 生成保存的文件名
+    const originalName = originalFile.value?.name || 'processed_image'
+    const ext = originalName.split('.').pop() || 'jpg'
+    const baseName = originalName.replace(`.${ext}`, '')
+    const filename = `${baseName}_processed.${ext}`
+
+    // 调用API保存处理后的图片
+    const result = await FilesApi.saveProcessedImage(processedResult.value.processedUrl, filename)
+
     ElMessage.success(t('imageEditor.saveSuccess'))
-    emit('saved', processedResult.value)
+    emit('saved', { ...processedResult.value, savedFile: result })
     handleClose()
   } catch (error) {
     console.error('Failed to save image:', error)
@@ -356,7 +402,7 @@ const handleClose = () => {
   if (processedImageUrl.value && processedImageUrl.value.startsWith('blob:')) {
     URL.revokeObjectURL(processedImageUrl.value)
   }
-  
+
   visible.value = false
 }
 

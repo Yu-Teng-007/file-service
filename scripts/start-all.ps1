@@ -5,7 +5,7 @@ param(
     [switch]$SkipDependencies,
     [switch]$SkipRedis,
     [string]$BackendPort = "3001",
-    [string]$FrontendPort = "3000"
+    [string]$FrontendPort = "5800"
 )
 
 # 颜色输出函数

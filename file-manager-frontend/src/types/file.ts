@@ -131,6 +131,7 @@ export interface ImageProcessingResult {
   originalSize: number
   processedSize: number
   compressionRatio: number
+  processedUrl: string
   info: {
     width: number
     height: number

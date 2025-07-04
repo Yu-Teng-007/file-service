@@ -152,6 +152,20 @@ export class FilesApi {
   }
 
   /**
+   * 获取文件直接访问URL（用于静态文件访问）
+   */
+  static getFileDirectUrl(fileUrl: string): string {
+    // 如果已经是完整URL，直接返回
+    if (fileUrl.startsWith('http')) {
+      return fileUrl
+    }
+    // 静态文件服务不需要 /api 前缀
+    const baseURL = import.meta.env.VITE_API_BASE_URL
+    const serverUrl = baseURL.replace('/api', '')
+    return `${serverUrl}${fileUrl}`
+  }
+
+  /**
    * 获取系统统计信息
    */
   static async getSystemStats(): Promise<SystemInfo> {
@@ -263,7 +277,13 @@ export class FilesApi {
         },
       }
     )
-    return response.data!
+    console.log('Raw API response:', response)
+    // 检查响应结构，如果有嵌套的data字段则提取，否则直接使用
+    if (response.data && typeof response.data === 'object' && 'data' in response.data) {
+      return response.data.data!
+    } else {
+      return response.data as ImageProcessingResult
+    }
   }
 
   /**
@@ -317,6 +337,25 @@ export class FilesApi {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
+      }
+    )
+    return response.data!
+  }
+
+  /**
+   * 保存处理后的图片
+   */
+  static async saveProcessedImage(
+    processedUrl: string,
+    filename: string,
+    folderId?: string
+  ): Promise<{ fileId: string; url: string }> {
+    const response = await apiClient.post<ApiResponse<{ fileId: string; url: string }>>(
+      '/image-processing/save-processed',
+      {
+        processedUrl,
+        filename,
+        folderId,
       }
     )
     return response.data!

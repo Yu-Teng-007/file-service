@@ -2,110 +2,122 @@
   <el-dialog
     v-model="visible"
     title="文件属性"
-    width="600px"
+    width="900px"
     @close="handleClose"
+    class="file-properties-dialog"
   >
     <div v-if="file" class="file-properties">
-      <!-- 文件基本信息 -->
-      <div class="property-section">
-        <h3>基本信息</h3>
-        <div class="property-grid">
-          <div class="property-item">
-            <label>文件名：</label>
+      <div class="properties-layout">
+        <!-- 左侧：文件基本信息 -->
+        <div class="left-panel">
+          <div class="property-section">
+            <h3>基本信息</h3>
+            <div class="property-grid">
+              <div class="property-item">
+                <label>文件名：</label>
+                <div class="filename-input-container">
+                  <el-input
+                    v-model="fileNameWithoutExt"
+                    placeholder="请输入文件名"
+                    size="small"
+                    class="filename-input"
+                  />
+                  <span class="file-extension">{{ fileExtension }}</span>
+                </div>
+              </div>
+
+              <div class="property-item">
+                <label>文件大小：</label>
+                <span class="property-value">{{ configStore.formatFileSize(file.size) }}</span>
+              </div>
+
+              <div class="property-item">
+                <label>文件类型：</label>
+                <span class="property-value">{{ file.mimeType }}</span>
+              </div>
+
+              <div class="property-item">
+                <label>文件分类：</label>
+                <span class="property-value">{{ getCategoryLabel(file.category) }}</span>
+              </div>
+
+              <div class="property-item">
+                <label>访问级别：</label>
+                <el-select v-model="formData.accessLevel" size="small">
+                  <el-option
+                    v-for="level in accessLevels"
+                    :key="level.value"
+                    :label="level.label"
+                    :value="level.value"
+                  />
+                </el-select>
+              </div>
+
+              <div class="property-item">
+                <label>上传时间：</label>
+                <span class="property-value">{{ formatTime(file.uploadedAt) }}</span>
+              </div>
+
+              <div class="property-item">
+                <label>文件路径：</label>
+                <span class="property-value file-path">{{ file.path }}</span>
+              </div>
+
+              <div class="property-item url-item">
+                <label>文件URL：</label>
+                <div class="url-container">
+                  <el-input :model-value="fullFileUrl" readonly size="small" class="url-input" />
+                  <div class="url-actions">
+                    <el-button
+                      size="small"
+                      @click="copyToClipboard(fullFileUrl)"
+                      :icon="DocumentCopy"
+                    >
+                      复制
+                    </el-button>
+                    <el-button size="small" type="primary" @click="openFileUrl" :icon="Link">
+                      打开
+                    </el-button>
+                  </div>
+                </div>
+              </div>
+
+              <div v-if="file.checksum" class="property-item">
+                <label>校验和：</label>
+                <span class="checksum">{{ file.checksum }}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 元数据 -->
+          <div v-if="file.metadata || formData.metadata" class="property-section">
+            <h3>元数据</h3>
             <el-input
-              v-model="formData.filename"
-              placeholder="请输入文件名"
+              v-model="metadataText"
+              type="textarea"
+              :rows="4"
+              placeholder="JSON格式的元数据"
             />
           </div>
-          
-          <div class="property-item">
-            <label>原始名称：</label>
-            <span>{{ file.originalName }}</span>
-          </div>
-          
-          <div class="property-item">
-            <label>文件大小：</label>
-            <span>{{ configStore.formatFileSize(file.size) }}</span>
-          </div>
-          
-          <div class="property-item">
-            <label>文件类型：</label>
-            <span>{{ file.mimeType }}</span>
-          </div>
-          
-          <div class="property-item">
-            <label>文件分类：</label>
-            <span>{{ getCategoryLabel(file.category) }}</span>
-          </div>
-          
-          <div class="property-item">
-            <label>访问级别：</label>
-            <el-select v-model="formData.accessLevel">
-              <el-option
-                v-for="level in accessLevels"
-                :key="level.value"
-                :label="level.label"
-                :value="level.value"
-              />
-            </el-select>
-          </div>
-          
-          <div class="property-item">
-            <label>上传时间：</label>
-            <span>{{ formatTime(file.uploadedAt) }}</span>
-          </div>
-          
-          <div class="property-item">
-            <label>文件路径：</label>
-            <span>{{ file.path }}</span>
-          </div>
-          
-          <div class="property-item">
-            <label>文件URL：</label>
-            <el-input
-              :model-value="file.url"
-              readonly
-            >
-              <template #append>
-                <el-button @click="copyToClipboard(file.url)">
-                  复制
-                </el-button>
-              </template>
-            </el-input>
-          </div>
-          
-          <div v-if="file.checksum" class="property-item">
-            <label>校验和：</label>
-            <span class="checksum">{{ file.checksum }}</span>
-          </div>
         </div>
-      </div>
 
-      <!-- 元数据 -->
-      <div v-if="file.metadata || formData.metadata" class="property-section">
-        <h3>元数据</h3>
-        <el-input
-          v-model="metadataText"
-          type="textarea"
-          :rows="6"
-          placeholder="JSON格式的元数据"
-        />
-      </div>
-
-      <!-- 预览 -->
-      <div v-if="isPreviewable" class="property-section">
-        <h3>预览</h3>
-        <div class="preview-container">
-          <img
-            v-if="file.category === 'images'"
-            :src="getPreviewUrl()"
-            :alt="file.originalName"
-            class="preview-image"
-            @error="handlePreviewError"
-          />
-          <div v-else class="preview-placeholder">
-            <el-icon size="48"><Document /></el-icon>
-            <p>此文件类型不支持预览</p>
+        <!-- 右侧：预览区域 -->
+        <div v-if="isPreviewable" class="right-panel">
+          <div class="property-section">
+            <h3>预览</h3>
+            <div class="preview-container">
+              <img
+                v-if="file.category === 'images'"
+                :src="getPreviewUrl()"
+                :alt="file.originalName"
+                class="preview-image"
+                @error="handlePreviewError"
+              />
+              <div v-else class="preview-placeholder">
+                <el-icon size="32"><Document /></el-icon>
+                <p>此文件类型不支持预览</p>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -114,13 +126,7 @@
     <template #footer>
       <div class="dialog-footer">
         <el-button @click="handleClose">取消</el-button>
-        <el-button
-          type="primary"
-          :loading="saving"
-          @click="handleSave"
-        >
-          保存
-        </el-button>
+        <el-button type="primary" :loading="saving" @click="handleSave">保存</el-button>
       </div>
     </template>
   </el-dialog>
@@ -130,7 +136,7 @@
 import { ref, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ElMessage } from 'element-plus'
-import { Document } from '@element-plus/icons-vue'
+import { Document, DocumentCopy, Link } from '@element-plus/icons-vue'
 import dayjs from 'dayjs'
 import { useConfigStore } from '@/stores/config'
 import FilesApi from '@/api/files'
@@ -162,7 +168,7 @@ const metadataText = ref('')
 // 计算属性
 const visible = computed({
   get: () => props.modelValue,
-  set: (value) => emit('update:modelValue', value),
+  set: value => emit('update:modelValue', value),
 })
 
 const accessLevels = computed(() => [
@@ -173,6 +179,29 @@ const accessLevels = computed(() => [
 
 const isPreviewable = computed(() => {
   return props.file?.category === 'images'
+})
+
+const fullFileUrl = computed(() => {
+  if (!props.file) return ''
+  return FilesApi.getFileDirectUrl(props.file.url)
+})
+
+// 文件扩展名
+const fileExtension = computed(() => {
+  if (!props.file) return ''
+  const filename = props.file.originalName
+  const lastDotIndex = filename.lastIndexOf('.')
+  return lastDotIndex > 0 ? filename.substring(lastDotIndex) : ''
+})
+
+// 不带扩展名的文件名
+const fileNameWithoutExt = ref('')
+
+// 监听文件名变化，更新完整文件名
+watch(fileNameWithoutExt, newName => {
+  if (newName && fileExtension.value) {
+    formData.value.filename = newName + fileExtension.value
+  }
 })
 
 // 方法
@@ -209,10 +238,23 @@ const copyToClipboard = async (text: string) => {
   }
 }
 
+const openFileUrl = () => {
+  if (fullFileUrl.value) {
+    window.open(fullFileUrl.value, '_blank')
+  }
+}
+
 const initFormData = () => {
   if (props.file) {
+    const originalName = props.file.originalName
+    const lastDotIndex = originalName.lastIndexOf('.')
+    const nameWithoutExt = lastDotIndex > 0 ? originalName.substring(0, lastDotIndex) : originalName
+
+    // 设置不带扩展名的文件名
+    fileNameWithoutExt.value = nameWithoutExt
+
     formData.value = {
-      filename: props.file.filename,
+      filename: originalName, // 使用原始文件名
       accessLevel: props.file.accessLevel,
       metadata: props.file.metadata || {},
     }
@@ -262,71 +304,246 @@ watch(() => props.file, initFormData, { immediate: true })
 </script>
 
 <style scoped>
+/* 对话框整体样式 */
+.file-properties-dialog :deep(.el-dialog__body) {
+  padding: 16px 20px;
+}
+
+/* 全局隐藏滚动条样式 */
+.file-properties-dialog :deep(*) {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+}
+
+.file-properties-dialog :deep(*)::-webkit-scrollbar {
+  display: none; /* Chrome, Safari and Opera */
+}
+
 .file-properties {
   max-height: 70vh;
   overflow-y: auto;
+  /* 隐藏滚动条但保持滚动功能 */
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+}
+
+.file-properties::-webkit-scrollbar {
+  display: none; /* Chrome, Safari and Opera */
+}
+
+/* 横向布局 */
+.properties-layout {
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+}
+
+.left-panel {
+  flex: 1;
+  min-width: 0; /* 允许flex项目收缩 */
+}
+
+.right-panel {
+  flex: 0 0 280px; /* 固定宽度的预览区域 */
 }
 
 .property-section {
-  margin-bottom: 24px;
+  margin-bottom: 20px;
+}
+
+.property-section:last-child {
+  margin-bottom: 0;
 }
 
 .property-section h3 {
-  margin: 0 0 16px 0;
+  margin: 0 0 12px 0;
   color: var(--el-text-color-primary);
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
-  border-bottom: 1px solid var(--el-border-color);
-  padding-bottom: 8px;
+  border-bottom: 1px solid var(--el-border-color-light);
+  padding-bottom: 6px;
 }
 
 .property-grid {
   display: grid;
-  gap: 16px;
+  gap: 10px;
 }
 
 .property-item {
   display: grid;
-  grid-template-columns: 100px 1fr;
+  grid-template-columns: 85px 1fr;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
+  min-height: 30px;
 }
 
 .property-item label {
   font-weight: 500;
   color: var(--el-text-color-regular);
+  font-size: 13px;
 }
 
-.checksum {
-  font-family: monospace;
+.property-value {
+  color: var(--el-text-color-primary);
+  font-size: 13px;
+  word-break: break-word;
+}
+
+.file-path {
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
   font-size: 12px;
-  word-break: break-all;
-}
-
-.preview-container {
-  border: 1px solid var(--el-border-color);
-  border-radius: 8px;
-  padding: 16px;
-  text-align: center;
-  background-color: var(--el-bg-color-page);
-}
-
-.preview-image {
-  max-width: 100%;
-  max-height: 300px;
-  object-fit: contain;
-  border-radius: 4px;
-}
-
-.preview-placeholder {
   color: var(--el-text-color-secondary);
 }
 
-.preview-placeholder p {
-  margin: 8px 0 0 0;
+.url-item {
+  grid-template-columns: 90px 1fr;
+  align-items: flex-start;
 }
 
-.dialog-footer {
-  text-align: right;
+.url-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.url-input {
+  flex: 1;
+}
+
+.url-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+/* 文件名输入样式 */
+.filename-input-container {
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--el-border-color);
+  border-radius: 4px;
+  overflow: hidden;
+  background-color: var(--el-bg-color);
+}
+
+.filename-input {
+  flex: 1;
+}
+
+.filename-input :deep(.el-input__wrapper) {
+  border: none;
+  box-shadow: none;
+  border-radius: 0;
+}
+
+.file-extension {
+  padding: 0 12px;
+  background-color: var(--el-bg-color-page);
+  color: var(--el-text-color-regular);
+  font-size: 13px;
+  border-left: 1px solid var(--el-border-color-light);
+  white-space: nowrap;
+}
+
+.checksum {
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  font-size: 11px;
+  word-break: break-all;
+  color: var(--el-text-color-secondary);
+  background-color: var(--el-bg-color-page);
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.preview-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 200px;
+  border: 1px solid var(--el-border-color-light);
+  border-radius: 6px;
+  background-color: var(--el-bg-color-page);
+  overflow: hidden;
+}
+
+.preview-image {
+  max-width: 260px;
+  max-height: 180px;
+  border-radius: 4px;
+  object-fit: contain;
+}
+
+.preview-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  color: var(--el-text-color-placeholder);
+}
+
+.preview-placeholder p {
+  margin: 0;
+  font-size: 13px;
+}
+
+/* 对话框底部按钮样式 */
+.file-properties-dialog :deep(.el-dialog__footer) {
+  padding: 12px 20px 16px;
+  border-top: 1px solid var(--el-border-color-lighter);
+}
+
+/* 元数据文本框样式 */
+.property-section :deep(.el-textarea__inner) {
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  font-size: 12px;
+  line-height: 1.4;
+  /* 隐藏滚动条 */
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+}
+
+.property-section :deep(.el-textarea__inner)::-webkit-scrollbar {
+  display: none; /* Chrome, Safari and Opera */
+}
+
+/* 响应式调整 */
+@media (max-width: 1024px) {
+  .file-properties-dialog {
+    width: 95% !important;
+  }
+
+  .properties-layout {
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .right-panel {
+    flex: none;
+    width: 100%;
+  }
+
+  .preview-container {
+    height: 160px;
+  }
+
+  .preview-image {
+    max-width: 200px;
+    max-height: 140px;
+  }
+}
+
+@media (max-width: 768px) {
+  .property-item {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+
+  .property-item label {
+    font-weight: 600;
+  }
+
+  .url-item {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

@@ -10,6 +10,7 @@ import {
   HttpStatus,
   ParseUUIDPipe,
   BadRequestException,
+  Inject,
 } from '@nestjs/common'
 import { FileInterceptor } from '@nestjs/platform-express'
 import {
@@ -90,6 +91,7 @@ export class ImageProcessingController {
             originalSize: { type: 'number' },
             processedSize: { type: 'number' },
             compressionRatio: { type: 'number' },
+            processedUrl: { type: 'string' },
             info: {
               type: 'object',
               properties: {
@@ -122,22 +124,26 @@ export class ImageProcessingController {
     }
 
     const outputPath = `${image.path}.processed`
-    const result = await this.imageProcessingService.processImage(
-      image.path,
-      outputPath,
-      options
-    )
+    const result = await this.imageProcessingService.processImage(image.path, outputPath, options)
 
-    return {
+    // 生成处理后图片的访问URL
+    const fileName = outputPath.split(/[/\\]/).pop() // 支持Windows和Unix路径分隔符
+    const processedUrl = `/uploads/temp/image-processing/${fileName}`
+
+    const response = {
       success: true,
       message: '图片处理成功',
       data: {
         originalSize: result.originalSize,
         processedSize: result.processedSize,
         compressionRatio: result.compressionRatio,
+        processedUrl,
         info: result.info,
       },
     }
+
+    console.log('图片处理API响应:', JSON.stringify(response, null, 2))
+    return response
   }
 
   @Post('thumbnails')
@@ -250,10 +256,7 @@ export class ImageProcessingController {
     status: HttpStatus.OK,
     description: '图片压缩成功',
   })
-  async compressImage(
-    @UploadedFile() image: Express.Multer.File,
-    @Body('quality') quality = 80
-  ) {
+  async compressImage(@UploadedFile() image: Express.Multer.File, @Body('quality') quality = 80) {
     if (!image) {
       throw new BadRequestException('请上传图片文件')
     }
@@ -386,6 +389,55 @@ export class ImageProcessingController {
       success: true,
       message: '获取图片信息成功',
       data: info,
+    }
+  }
+
+  @Post('save-processed')
+  @ApiOperation({ summary: '保存处理后的图片', description: '将处理后的图片保存为新文件' })
+  @ApiBody({
+    description: '保存处理后图片的请求',
+    schema: {
+      type: 'object',
+      properties: {
+        processedUrl: {
+          type: 'string',
+          description: '处理后图片的URL',
+        },
+        filename: {
+          type: 'string',
+          description: '保存的文件名',
+        },
+        folderId: {
+          type: 'string',
+          description: '保存到的文件夹ID（可选）',
+        },
+      },
+      required: ['processedUrl', 'filename'],
+    },
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: '图片保存成功',
+  })
+  async saveProcessedImage(
+    @Body('processedUrl') processedUrl: string,
+    @Body('filename') filename: string,
+    @Body('folderId') folderId?: string
+  ) {
+    if (!processedUrl || !filename) {
+      throw new BadRequestException('请提供处理后图片URL和文件名')
+    }
+
+    const result = await this.imageProcessingService.saveProcessedImage(
+      processedUrl,
+      filename,
+      folderId
+    )
+
+    return {
+      success: true,
+      message: '图片保存成功',
+      data: result,
     }
   }
 }

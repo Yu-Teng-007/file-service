@@ -17,10 +17,7 @@
     "total": "总计",
     "selected": "已选择",
     "all": "全部",
-    "none": "无",
-    "actions": "操作",
-    "unknown": "未知",
-    "close": "关闭"
+    "none": "无"
   },
   "nav": {
     "dashboard": "仪表板",
@@ -74,16 +71,6 @@
       "private": "私有",
       "protected": "受保护"
     }
-  },
-  "category": {
-    "images": "图片",
-    "scripts": "脚本",
-    "styles": "样式",
-    "fonts": "字体",
-    "documents": "文档",
-    "music": "音频",
-    "videos": "视频",
-    "archives": "压缩包"
   },
   "upload": {
     "title": "文件上传",
@@ -188,7 +175,8 @@
     "previewError": "预览生成失败",
     "saveSuccess": "图片保存成功",
     "saveError": "图片保存失败",
-    "noProcessedImage": "请先预览处理效果"
+    "noProcessedImage": "请先预览处理效果",
+    "loadError": "图片加载失败"
   },
   "preview": {
     "title": "文件预览",
@@ -216,7 +204,6 @@
   },
   "trash": {
     "title": "回收站",
-    "empty": "回收站为空",
     "searchPlaceholder": "搜索已删除的文件...",
     "emptyTrash": "清空回收站",
     "restore": "恢复",

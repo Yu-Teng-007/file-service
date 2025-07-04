@@ -33,6 +33,7 @@ async function bootstrap() {
   // CORS 配置
   const corsOrigins = configService.get<string>('CORS_ORIGINS')?.split(',') || [
     'http://localhost:3000',
+    'http://localhost:5800',
   ]
   app.enableCors({
     origin: corsOrigins,

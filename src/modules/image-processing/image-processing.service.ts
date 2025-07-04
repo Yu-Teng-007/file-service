@@ -1,8 +1,8 @@
-import { Injectable, Logger, BadRequestException } from '@nestjs/common'
+import { Injectable, Logger, BadRequestException, Inject } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import * as sharp from 'sharp'
 import { promises as fs } from 'fs'
-import { join } from 'path'
+import { join, extname, basename } from 'path'
 import {
   ImageProcessingOptions,
   ImageInfo,
@@ -376,5 +376,64 @@ export class ImageProcessingService {
       progressive: compress.progressive,
       mozjpeg: compress.mozjpeg,
     })
+  }
+
+  /**
+   * 保存处理后的图片
+   */
+  async saveProcessedImage(
+    processedUrl: string,
+    filename: string,
+    folderId?: string
+  ): Promise<{ fileId: string; url: string }> {
+    try {
+      this.logger.log(`开始保存处理后的图片: ${processedUrl}`)
+
+      // 从URL中提取文件路径
+      const urlPath = processedUrl.replace('/uploads/temp/image-processing/', '')
+      const tempPath = join(
+        this.configService.get('UPLOAD_DIR') || 'uploads',
+        'temp',
+        'image-processing',
+        urlPath
+      )
+
+      // 验证临时文件是否存在
+      await fs.access(tempPath)
+
+      // 生成新的文件路径
+      const uploadDir = this.configService.get('UPLOAD_DIR') || 'uploads'
+      const targetDir = folderId ? join(uploadDir, 'images', folderId) : join(uploadDir, 'images')
+      await fs.mkdir(targetDir, { recursive: true })
+
+      // 生成唯一文件名
+      const ext = extname(filename) || '.jpg'
+      const baseName = basename(filename, ext)
+      const uniqueFilename = `${baseName}_${Date.now()}${ext}`
+      const targetPath = join(targetDir, uniqueFilename)
+
+      // 复制文件到目标位置
+      await fs.copyFile(tempPath, targetPath)
+
+      // 生成访问URL
+      const fileUrl = `/uploads/images/${folderId ? folderId + '/' : ''}${uniqueFilename}`
+
+      // 清理临时文件
+      try {
+        await fs.unlink(tempPath)
+      } catch (error) {
+        this.logger.warn(`清理临时文件失败: ${tempPath}`, error)
+      }
+
+      this.logger.log(`图片保存成功: ${targetPath}`)
+
+      return {
+        fileId: uniqueFilename.replace(ext, ''),
+        url: fileUrl,
+      }
+    } catch (error) {
+      this.logger.error(`保存处理后图片失败: ${processedUrl}`, error)
+      throw new BadRequestException('保存图片失败')
+    }
   }
 }

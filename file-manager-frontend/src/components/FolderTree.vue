@@ -14,10 +14,14 @@
         :props="treeProps"
         :expand-on-click-node="false"
         :default-expand-all="false"
+        :expanded-keys="expandedKeys"
+        :current-node-key="currentSelectedKey"
         node-key="id"
         highlight-current
         @node-click="handleNodeClick"
         @node-contextmenu="handleContextMenu"
+        @node-expand="handleNodeExpand"
+        @node-collapse="handleNodeCollapse"
       >
         <template #default="{ node, data }">
           <div class="tree-node" :class="{ 'system-folder': data.isSystem }">
@@ -133,12 +137,18 @@
         @click.stop
       >
         <el-card class="context-menu-card" shadow="always">
-          <div class="menu-item" @click="handleContextCommand('create')">
-            <el-icon><Plus /></el-icon>
-            <span>{{ $t('folder.create') }}</span>
-          </div>
+          <!-- "全部"文件夹不显示创建选项，其他文件夹显示 -->
+          <template v-if="!(selectedNode?.data?.isSystem && selectedNode?.data?.id === 'all')">
+            <div class="menu-item" @click="handleContextCommand('create')">
+              <el-icon><Plus /></el-icon>
+              <span>{{ $t('folder.create') }}</span>
+            </div>
+          </template>
           <!-- 系统文件夹不能重命名和删除 -->
           <template v-if="!selectedNode?.data?.isSystem">
+            <el-divider
+              v-if="!(selectedNode?.data?.isSystem && selectedNode?.data?.id === 'all')"
+            />
             <div class="menu-item" @click="handleContextCommand('rename')">
               <el-icon><Edit /></el-icon>
               <span>{{ $t('folder.rename') }}</span>
@@ -147,6 +157,13 @@
             <div class="menu-item danger" @click="handleContextCommand('delete')">
               <el-icon><Delete /></el-icon>
               <span>{{ $t('folder.delete') }}</span>
+            </div>
+          </template>
+          <!-- 如果是"全部"文件夹且没有其他选项，显示提示 -->
+          <template v-if="selectedNode?.data?.isSystem && selectedNode?.data?.id === 'all'">
+            <div class="menu-item disabled">
+              <el-icon><InfoFilled /></el-icon>
+              <span>系统文件夹无可用操作</span>
             </div>
           </template>
         </el-card>
@@ -189,6 +206,7 @@ import {
   Delete,
   Close,
   Check,
+  InfoFilled,
 } from '@element-plus/icons-vue'
 import { useI18n } from 'vue-i18n'
 import { useFoldersStore } from '@/stores/folders'
@@ -229,6 +247,10 @@ const showRenameDialog = ref(false)
 const showContextMenu = ref(false)
 const selectedNode = ref<any>(null)
 const contextMenuStyle = ref<any>({})
+
+// 状态管理：保存展开的节点和当前选中的节点
+const expandedKeys = ref<string[]>([])
+const currentSelectedKey = ref<string>('all')
 
 // Forms
 const createForm = reactive<FolderCreateDto>({
@@ -272,6 +294,62 @@ const renameRules: FormRules = {
   ],
 }
 
+// Helper functions
+const findFolderInTree = (folders: FolderInfo[], targetId: string): FolderInfo | null => {
+  for (const folder of folders) {
+    if (folder.id === targetId) {
+      return folder
+    }
+    if (folder.children && folder.children.length > 0) {
+      const found = findFolderInTree(folder.children, targetId)
+      if (found) return found
+    }
+  }
+  return null
+}
+
+const expandParentFolders = (folderId: string, allFolders: FolderInfo[]) => {
+  // 找到目标文件夹
+  const targetFolder = allFolders.find(f => f.id === folderId)
+  if (!targetFolder || !targetFolder.parentId) return
+
+  // 递归展开所有父级文件夹
+  const expandParent = (parentId: string) => {
+    if (!expandedKeys.value.includes(parentId)) {
+      expandedKeys.value.push(parentId)
+    }
+
+    const parentFolder = allFolders.find(f => f.id === parentId)
+    if (parentFolder && parentFolder.parentId) {
+      expandParent(parentFolder.parentId)
+    }
+  }
+
+  expandParent(targetFolder.parentId)
+}
+
+const selectAndExpandToFolder = async (folderId: string) => {
+  // 等待DOM更新
+  await nextTick()
+
+  // 展开所有父级文件夹
+  expandParentFolders(folderId, foldersStore.folders)
+
+  // 选中目标文件夹
+  if (treeRef.value) {
+    currentSelectedKey.value = folderId
+    treeRef.value.setCurrentKey(folderId)
+
+    // 触发选择事件
+    const folderData =
+      foldersStore.folderTree.find(f => f.id === folderId) ||
+      findFolderInTree(foldersStore.folderTree, folderId)
+    if (folderData) {
+      emit('folder-select', folderData)
+    }
+  }
+}
+
 // Methods
 const loadFolders = async (force = false) => {
   try {
@@ -283,7 +361,21 @@ const loadFolders = async (force = false) => {
 }
 
 const handleNodeClick = (data: FolderInfo) => {
+  currentSelectedKey.value = data.id
   emit('folder-select', data)
+}
+
+const handleNodeExpand = (data: FolderInfo) => {
+  if (!expandedKeys.value.includes(data.id)) {
+    expandedKeys.value.push(data.id)
+  }
+}
+
+const handleNodeCollapse = (data: FolderInfo) => {
+  const index = expandedKeys.value.indexOf(data.id)
+  if (index > -1) {
+    expandedKeys.value.splice(index, 1)
+  }
 }
 
 const handleContextMenu = (event: MouseEvent, data: FolderInfo, node: any) => {
@@ -325,9 +417,22 @@ const handleContextCommand = (command: string) => {
     return
   }
 
+  // "全部"文件夹不能创建子文件夹
+  if (
+    selectedNode.value.data.isSystem &&
+    selectedNode.value.data.id === 'all' &&
+    command === 'create'
+  ) {
+    ElMessage.warning('不能在"全部"文件夹下创建子文件夹，请在其他文件夹下创建')
+    return
+  }
+
   switch (command) {
     case 'create':
-      createForm.parentId = selectedNode.value.data.id
+      // 如果是系统文件夹，将parentId设为undefined（创建根级文件夹）
+      createForm.parentId = selectedNode.value.data.isSystem
+        ? undefined
+        : selectedNode.value.data.id
       showCreateDialog.value = true
       break
     case 'rename':
@@ -354,6 +459,11 @@ const handleCreate = async () => {
     createForm.name = ''
     createForm.parentId = undefined
 
+    // 选中新创建的文件夹并展开到它
+    if (folder.id) {
+      await selectAndExpandToFolder(folder.id)
+    }
+
     ElMessage.success(t('folder.createSuccess'))
     emit('folder-created', folder)
   } catch (error) {
@@ -371,11 +481,15 @@ const handleRename = async () => {
     await renameFormRef.value.validate()
     renaming.value = true
 
-    const folder = await FilesApi.renameFolder(selectedNode.value.data.id, renameForm.name)
+    const folderId = selectedNode.value.data.id
+    const folder = await FilesApi.renameFolder(folderId, renameForm.name)
     await loadFolders(true) // 强制刷新文件夹列表
 
     showRenameDialog.value = false
     renameForm.name = ''
+
+    // 重新选中重命名后的文件夹
+    await selectAndExpandToFolder(folderId)
 
     ElMessage.success(t('folder.renameSuccess'))
     emit('folder-updated', folder)
@@ -422,6 +536,7 @@ onMounted(async () => {
     const allFolder = foldersStore.folderTree.find(folder => folder.id === 'all')
     if (allFolder && treeRef.value) {
       // 设置树的当前选中节点
+      currentSelectedKey.value = 'all'
       treeRef.value.setCurrentKey('all')
       // 触发文件夹选择事件
       emit('folder-select', allFolder)
@@ -696,6 +811,17 @@ defineExpose({
       font-weight: 500;
       white-space: nowrap;
     }
+  }
+
+  .menu-item.disabled {
+    color: var(--el-text-color-disabled);
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+
+  .menu-item.disabled:hover {
+    background-color: transparent;
+    color: var(--el-text-color-disabled);
   }
 
   /* 分割线样式 */

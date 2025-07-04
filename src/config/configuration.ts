@@ -19,7 +19,7 @@ export const appConfig = registerAs('app', () => ({
   apiKey: process.env.API_KEY || 'default-api-key',
 
   // CORS 配置
-  corsOrigins: process.env.CORS_ORIGINS?.split(',') || ['http://localhost:3000'],
+  corsOrigins: process.env.CORS_ORIGINS?.split(',') || ['http://localhost:3000', 'http://localhost:5800'],
 
   // 速率限制
   rateLimitTtl: parseInt(process.env.RATE_LIMIT_TTL, 10) || 60,
