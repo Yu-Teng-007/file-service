@@ -17,7 +17,11 @@
     "total": "总计",
     "selected": "已选择",
     "all": "全部",
-    "none": "无"
+    "none": "无",
+    "close": "关闭",
+    "retry": "重试",
+    "unknown": "未知",
+    "actions": "操作"
   },
   "nav": {
     "dashboard": "仪表板",
@@ -144,7 +148,9 @@
     "deleteConfirm": "确认删除文件夹 \"{name}\" 吗？",
     "deleteTitle": "删除文件夹",
     "loadError": "加载文件夹失败",
-    "updateSuccess": "文件夹更新成功"
+    "updateSuccess": "文件夹更新成功",
+    "refreshSuccess": "文件夹列表刷新成功",
+    "refreshError": "文件夹列表刷新失败"
   },
   "imageEditor": {
     "title": "图片编辑器",
@@ -238,7 +244,7 @@
     "moveFiles": "移动文件",
     "copyFiles": "复制文件",
     "moveDescription": "将选中的 {count} 个文件移动到：",
-    "singleMoveDescription": "将文件移动到：",
+    "singleMoveDescription": "移动文件到：",
     "targetFolder": "目标文件夹",
     "targetCategory": "目标分类",
     "selectFolder": "选择文件夹",
