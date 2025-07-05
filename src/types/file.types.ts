@@ -51,6 +51,7 @@ export interface FileUploadOptions {
   customPath?: string
   metadata?: Record<string, any>
   overwrite?: boolean
+  folderId?: string
 }
 
 export interface FileSearchQuery {
@@ -59,6 +60,7 @@ export interface FileSearchQuery {
   uploadedBy?: string
   filename?: string
   originalName?: string
+  search?: string
   dateFrom?: Date
   dateTo?: Date
   minSize?: number

@@ -17,7 +17,11 @@
     "total": "Total",
     "selected": "Selected",
     "all": "All",
-    "none": "None"
+    "none": "None",
+    "close": "Close",
+    "retry": "Retry",
+    "unknown": "Unknown",
+    "actions": "Actions"
   },
   "nav": {
     "dashboard": "Dashboard",
@@ -104,5 +108,42 @@
     "systemInfo": "System Info",
     "version": "Version",
     "uptime": "Uptime"
+  },
+  "folder": {
+    "title": "Folders",
+    "root": "Root",
+    "name": "Folder Name",
+    "parent": "Parent Folder",
+    "create": "New Folder",
+    "rename": "Rename",
+    "delete": "Delete",
+    "createDialog": {
+      "title": "Create Folder",
+      "namePlaceholder": "Enter folder name",
+      "parentPlaceholder": "Select parent folder (optional)"
+    },
+    "renameDialog": {
+      "title": "Rename Folder",
+      "namePlaceholder": "Enter new folder name"
+    },
+    "validation": {
+      "nameRequired": "Folder name is required",
+      "nameLength": "Folder name should be 1-50 characters",
+      "nameInvalid": "Folder name contains invalid characters"
+    },
+    "createSuccess": "Folder created successfully",
+    "createError": "Failed to create folder",
+    "renameSuccess": "Folder renamed successfully",
+    "renameError": "Failed to rename folder",
+    "deleteSuccess": "Folder deleted successfully",
+    "deleteError": "Failed to delete folder",
+    "deleteConfirm": "Are you sure to delete folder \"{name}\"?",
+    "deleteNotEmptyConfirm": "Folder \"{name}\" is not empty and contains subfolders or files.<br/><strong>Force delete will permanently remove all contents and cannot be undone!</strong><br/>Are you sure you want to force delete?",
+    "deleteTitle": "Delete Folder",
+    "forceDelete": "Force Delete",
+    "loadError": "Failed to load folders",
+    "updateSuccess": "Folder updated successfully",
+    "refreshSuccess": "Folder list refreshed successfully",
+    "refreshError": "Failed to refresh folder list"
   }
 }

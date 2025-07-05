@@ -142,7 +142,9 @@
     "deleteSuccess": "文件夹删除成功",
     "deleteError": "文件夹删除失败",
     "deleteConfirm": "确认删除文件夹 \"{name}\" 吗？",
+    "deleteNotEmptyConfirm": "文件夹 \"{name}\" 不为空，包含子文件夹或文件。<br/><strong>强制删除将永久删除所有内容，此操作不可恢复！</strong><br/>确认要强制删除吗？",
     "deleteTitle": "删除文件夹",
+    "forceDelete": "强制删除",
     "loadError": "加载文件夹失败",
     "updateSuccess": "文件夹更新成功"
   },
@@ -175,14 +177,7 @@
     "previewError": "预览生成失败",
     "saveSuccess": "图片保存成功",
     "saveError": "图片保存失败",
-    "loadError": "图片加载失败",
-    "noProcessedImage": "请先预览处理效果",
-    "saveOptions": "保存选项",
-    "saveMode": "保存模式",
-    "createNew": "创建新文件",
-    "overwrite": "覆盖原文件",
-    "filename": "文件名",
-    "filenamePlaceholder": "请输入文件名（可选）"
+    "noProcessedImage": "请先预览处理效果"
   },
   "preview": {
     "title": "文件预览",

@@ -53,6 +53,13 @@ export class FileUploadDto {
   @IsOptional()
   @IsString()
   metadata?: string
+
+  @ApiPropertyOptional({
+    description: '文件夹ID',
+  })
+  @IsOptional()
+  @IsString()
+  folderId?: string
 }
 
 export class FileSearchDto {
@@ -92,6 +99,13 @@ export class FileSearchDto {
   @IsOptional()
   @IsString()
   originalName?: string
+
+  @ApiPropertyOptional({
+    description: '通用搜索（同时搜索文件名和原始文件名）',
+  })
+  @IsOptional()
+  @IsString()
+  search?: string
 
   @ApiPropertyOptional({
     description: '开始日期（ISO格式）',

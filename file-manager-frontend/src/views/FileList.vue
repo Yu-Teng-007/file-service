@@ -336,6 +336,7 @@ import {
 import dayjs from 'dayjs'
 import { useConfigStore } from '@/stores/config'
 import { useFilesStore } from '@/stores/files'
+import { useFoldersStore } from '@/stores/folders'
 import FilesApi from '@/api/files'
 import { FileCategory, FileAccessLevel, type FileInfo, type FolderInfo } from '@/types/file'
 import FolderTree from '@/components/FolderTree.vue'
@@ -349,6 +350,7 @@ import RenameDialog from '@/components/RenameDialog.vue'
 const { t } = useI18n()
 const configStore = useConfigStore()
 const filesStore = useFilesStore()
+const foldersStore = useFoldersStore()
 
 // 状态
 const searchQuery = ref('')

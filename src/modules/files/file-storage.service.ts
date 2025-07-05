@@ -154,6 +154,7 @@ export class FileStorageService {
       mimeType: additionalInfo.mimeType || 'application/octet-stream',
       uploadedBy: additionalInfo.uploadedBy,
       uploadedAt: new Date(),
+      folderId: options.folderId,
       metadata: options.metadata,
       checksum: additionalInfo.checksum,
     }
@@ -230,6 +231,16 @@ export class FileStorageService {
     if (query.originalName) {
       const searchTerm = query.originalName.toLowerCase()
       files = files.filter(f => f.originalName.toLowerCase().includes(searchTerm))
+    }
+
+    // 通用搜索：同时搜索文件名和原始文件名
+    if (query.search) {
+      const searchTerm = query.search.toLowerCase()
+      files = files.filter(
+        f =>
+          f.filename.toLowerCase().includes(searchTerm) ||
+          f.originalName.toLowerCase().includes(searchTerm)
+      )
     }
 
     if (query.mimeType) {

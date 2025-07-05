@@ -29,7 +29,7 @@
           <div v-if="previewInfo?.type === 'image'" class="image-preview">
             <img
               :src="previewUrl"
-              :alt="fileInfo?.filename"
+              :alt="fileInfo?.originalName || fileInfo?.filename"
               class="preview-image"
               :style="{
                 transform: `scale(${imageScale}) rotate(${imageRotation}deg)`,
@@ -127,7 +127,7 @@
           <div v-else-if="previewInfo?.type === 'office'" class="office-preview">
             <div class="office-placeholder">
               <el-icon size="64" color="var(--el-color-primary)"><Document /></el-icon>
-              <h3>{{ fileInfo?.filename }}</h3>
+              <h3>{{ fileInfo?.originalName || fileInfo?.filename }}</h3>
               <p>{{ $t('preview.officeNotSupported') }}</p>
               <el-button type="primary" @click="downloadFile">
                 {{ $t('preview.download') }}
@@ -233,7 +233,7 @@ const visible = computed({
 })
 
 const previewTitle = computed(() => {
-  return props.fileInfo?.filename || t('preview.title')
+  return props.fileInfo?.originalName || props.fileInfo?.filename || t('preview.title')
 })
 
 // 响应式对话框宽度
@@ -376,7 +376,10 @@ const downloadFile = async () => {
   if (!props.fileInfo) return
 
   try {
-    await FilesApi.downloadFile(props.fileInfo.id, props.fileInfo.filename)
+    await FilesApi.downloadFile(
+      props.fileInfo.id,
+      props.fileInfo.originalName || props.fileInfo.filename
+    )
   } catch (err) {
     console.error('Failed to download file:', err)
     ElMessage.error(t('preview.downloadError'))

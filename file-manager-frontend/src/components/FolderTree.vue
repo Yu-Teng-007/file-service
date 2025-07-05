@@ -2,9 +2,20 @@
   <div class="folder-tree">
     <div class="tree-header">
       <h3>{{ $t('folder.title') }}</h3>
-      <el-button type="primary" size="small" :icon="Plus" @click="showCreateDialog = true">
-        {{ $t('folder.create') }}
-      </el-button>
+      <div class="header-actions">
+        <el-button
+          size="small"
+          :icon="Refresh"
+          @click="handleRefresh"
+          :loading="foldersStore.loading"
+          title="刷新文件夹列表"
+        >
+          {{ $t('common.refresh') }}
+        </el-button>
+        <el-button type="primary" size="small" :icon="Plus" @click="showCreateDialog = true">
+          {{ $t('folder.create') }}
+        </el-button>
+      </div>
     </div>
 
     <div class="tree-content">
@@ -207,6 +218,7 @@ import {
   Close,
   Check,
   InfoFilled,
+  Refresh,
 } from '@element-plus/icons-vue'
 import { useI18n } from 'vue-i18n'
 import { useFoldersStore } from '@/stores/folders'
@@ -515,16 +527,87 @@ const handleDelete = async () => {
       }
     )
 
-    await FilesApi.deleteFolder(selectedNode.value.data.id)
-    await loadFolders(true) // 强制刷新文件夹列表
+    // 首先尝试普通删除
+    try {
+      await FilesApi.deleteFolder(selectedNode.value.data.id, false)
+      await loadFolders(true) // 强制刷新文件夹列表
+      ElMessage.success(t('folder.deleteSuccess'))
+      emit('folder-deleted', selectedNode.value.data.id)
+    } catch (deleteError: any) {
+      // 调试：打印错误信息
+      console.log('Delete error:', deleteError)
+      console.log('Error response:', deleteError?.response)
+      console.log('Error response data:', deleteError?.response?.data)
 
-    ElMessage.success(t('folder.deleteSuccess'))
-    emit('folder-deleted', selectedNode.value.data.id)
+      // 检查是否是文件夹不为空的错误 - 使用更宽泛的检查
+      const errorData = deleteError?.response?.data || {}
+      const errorMessage = errorData.message || deleteError?.message || ''
+      const errorCode = errorData.code || deleteError?.code || ''
+      const httpStatus = deleteError?.response?.status || deleteError?.status
+
+      console.log('Error message:', errorMessage)
+      console.log('Error code:', errorCode)
+      console.log('HTTP status:', httpStatus)
+
+      // 检查多种可能的错误标识
+      // 如果是400错误，很可能是文件夹不为空的错误
+      const isNotEmptyError =
+        errorMessage.includes('不为空') ||
+        errorMessage.includes('not empty') ||
+        errorMessage.includes('无法删除') ||
+        errorMessage.includes('force=true') ||
+        (errorCode === 'BAD_REQUEST' && errorMessage.includes('删除')) ||
+        (errorCode === 'ERR_BAD_REQUEST' && httpStatus === 400) ||
+        (httpStatus === 400 && errorMessage.includes('删除')) ||
+        httpStatus === 400 // 简化：所有400错误都当作文件夹不为空处理
+
+      console.log('Is not empty error:', isNotEmptyError)
+
+      if (isNotEmptyError) {
+        try {
+          await ElMessageBox.confirm(
+            t('folder.deleteNotEmptyConfirm', { name: selectedNode.value.data.name }),
+            t('folder.deleteTitle'),
+            {
+              confirmButtonText: t('folder.forceDelete'),
+              cancelButtonText: t('common.cancel'),
+              type: 'error',
+              dangerouslyUseHTMLString: true,
+            }
+          )
+
+          // 强制删除
+          await FilesApi.deleteFolder(selectedNode.value.data.id, true)
+          await loadFolders(true) // 强制刷新文件夹列表
+          ElMessage.success(t('folder.deleteSuccess'))
+          emit('folder-deleted', selectedNode.value.data.id)
+        } catch (forceError) {
+          if (forceError !== 'cancel') {
+            console.error('Failed to force delete folder:', forceError)
+            ElMessage.error(t('folder.deleteError'))
+          }
+        }
+      } else {
+        // 其他错误，不重复显示错误消息（API客户端已经显示了）
+        console.error('Failed to delete folder:', deleteError)
+      }
+    }
   } catch (error) {
     if (error !== 'cancel') {
       console.error('Failed to delete folder:', error)
-      ElMessage.error(t('folder.deleteError'))
+      // 不显示错误消息，因为API客户端已经显示了
     }
+  }
+}
+
+// 刷新文件夹列表
+const handleRefresh = async () => {
+  try {
+    await foldersStore.refreshFolders()
+    ElMessage.success(t('folder.refreshSuccess'))
+  } catch (error) {
+    console.error('刷新文件夹列表失败:', error)
+    ElMessage.error(t('folder.refreshError'))
   }
 }
 
@@ -569,6 +652,12 @@ defineExpose({
   margin: 0;
   font-size: 16px;
   font-weight: 500;
+}
+
+.header-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
 }
 
 .tree-content {

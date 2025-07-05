@@ -109,7 +109,7 @@
               <img
                 v-if="file.category === 'images'"
                 :src="getPreviewUrl()"
-                :alt="file.originalName"
+                :alt="file.originalName || file.filename"
                 class="preview-image"
                 @error="handlePreviewError"
               />

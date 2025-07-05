@@ -43,6 +43,7 @@ export interface FileUploadOptions {
   customPath?: string
   overwrite?: boolean
   metadata?: Record<string, any>
+  folderId?: string
 }
 
 export interface FileListQuery {

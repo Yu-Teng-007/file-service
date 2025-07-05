@@ -8,11 +8,7 @@ import { ConfigService } from '@nestjs/config'
 import { join } from 'path'
 import { promises as fs } from 'fs'
 import { v4 as uuidv4 } from 'uuid'
-import {
-  CreateFolderDto,
-  UpdateFolderDto,
-  FolderResponseDto,
-} from '../../types/dto'
+import { CreateFolderDto, UpdateFolderDto, FolderResponseDto } from '../../types/dto'
 import { FileStorageService } from '../files/file-storage.service'
 
 interface FolderInfo {
@@ -65,7 +61,7 @@ export class FoldersService {
 
   private buildFolderPath(parentId?: string, folders?: FolderInfo[]): string {
     if (!parentId) return '/'
-    
+
     if (!folders) {
       // 如果没有提供folders，需要加载
       return '/' // 简化处理，实际应该递归构建路径
@@ -73,29 +69,63 @@ export class FoldersService {
 
     const parent = folders.find(f => f.id === parentId)
     if (!parent) return '/'
-    
+
     const parentPath = this.buildFolderPath(parent.parentId, folders)
     return parentPath === '/' ? `/${parent.name}` : `${parentPath}/${parent.name}`
   }
 
-  private async calculateFolderStats(folderId: string): Promise<{ fileCount: number; totalSize: number }> {
-    // 这里应该查询数据库或文件系统来计算文件夹统计信息
-    // 简化实现，返回默认值
-    return { fileCount: 0, totalSize: 0 }
+  private async calculateFolderStats(
+    folderId: string
+  ): Promise<{ fileCount: number; totalSize: number }> {
+    try {
+      // 读取文件元数据来计算统计信息
+      const metadataPath = join(this.uploadDir, 'metadata.json')
+
+      let fileMetadata: any = {}
+      try {
+        const metadataContent = await fs.readFile(metadataPath, 'utf-8')
+        fileMetadata = JSON.parse(metadataContent)
+      } catch (error) {
+        // 如果元数据文件不存在或读取失败，返回默认值
+        return { fileCount: 0, totalSize: 0 }
+      }
+
+      // 统计属于该文件夹的文件
+      let fileCount = 0
+      let totalSize = 0
+
+      for (const [fileId, metadata] of Object.entries(fileMetadata)) {
+        const file = metadata as any
+        if (file.folderId === folderId) {
+          fileCount++
+          totalSize += file.size || 0
+        }
+      }
+
+      return { fileCount, totalSize }
+    } catch (error) {
+      console.error(`计算文件夹统计信息失败: ${folderId}`, error)
+      return { fileCount: 0, totalSize: 0 }
+    }
   }
 
   async getFolders(parentId?: string, includeFiles?: boolean): Promise<FolderResponseDto[]> {
     const folders = await this.loadFolders()
-    
+
     let filteredFolders = folders
     if (parentId) {
       filteredFolders = folders.filter(f => f.parentId === parentId)
     }
 
+    // 默认包含文件统计信息，除非明确设置为false
+    const shouldIncludeFiles = includeFiles !== false
+
     const result: FolderResponseDto[] = []
     for (const folder of filteredFolders) {
-      const stats = includeFiles ? await this.calculateFolderStats(folder.id) : { fileCount: 0, totalSize: 0 }
-      
+      const stats = shouldIncludeFiles
+        ? await this.calculateFolderStats(folder.id)
+        : { fileCount: 0, totalSize: 0 }
+
       result.push({
         id: folder.id,
         name: folder.name,
@@ -114,13 +144,13 @@ export class FoldersService {
   async getFolderById(id: string): Promise<FolderResponseDto> {
     const folders = await this.loadFolders()
     const folder = folders.find(f => f.id === id)
-    
+
     if (!folder) {
       throw new NotFoundException('文件夹不存在')
     }
 
     const stats = await this.calculateFolderStats(id)
-    
+
     return {
       id: folder.id,
       name: folder.name,
@@ -135,7 +165,7 @@ export class FoldersService {
 
   async createFolder(createFolderDto: CreateFolderDto): Promise<FolderResponseDto> {
     const { name, parentId } = createFolderDto
-    
+
     // 验证文件夹名称
     if (!name || name.trim().length === 0) {
       throw new BadRequestException('文件夹名称不能为空')
@@ -146,7 +176,7 @@ export class FoldersService {
     }
 
     const folders = await this.loadFolders()
-    
+
     // 检查父文件夹是否存在
     if (parentId) {
       const parentExists = folders.some(f => f.id === parentId)
@@ -156,9 +186,7 @@ export class FoldersService {
     }
 
     // 检查同级文件夹名称是否重复
-    const duplicateExists = folders.some(f => 
-      f.name === name && f.parentId === parentId
-    )
+    const duplicateExists = folders.some(f => f.name === name && f.parentId === parentId)
     if (duplicateExists) {
       throw new ConflictException('同级目录下已存在同名文件夹')
     }
@@ -200,7 +228,7 @@ export class FoldersService {
 
   async updateFolder(id: string, updateFolderDto: UpdateFolderDto): Promise<FolderResponseDto> {
     const { name } = updateFolderDto
-    
+
     if (!name || name.trim().length === 0) {
       throw new BadRequestException('文件夹名称不能为空')
     }
@@ -211,16 +239,16 @@ export class FoldersService {
 
     const folders = await this.loadFolders()
     const folderIndex = folders.findIndex(f => f.id === id)
-    
+
     if (folderIndex === -1) {
       throw new NotFoundException('文件夹不存在')
     }
 
     const folder = folders[folderIndex]
-    
+
     // 检查同级文件夹名称是否重复
-    const duplicateExists = folders.some(f => 
-      f.name === name && f.parentId === folder.parentId && f.id !== id
+    const duplicateExists = folders.some(
+      f => f.name === name && f.parentId === folder.parentId && f.id !== id
     )
     if (duplicateExists) {
       throw new ConflictException('同级目录下已存在同名文件夹')
@@ -255,15 +283,20 @@ export class FoldersService {
     }
   }
 
-  private updateChildrenPaths(folders: FolderInfo[], parentId: string, oldParentPath: string, newParentPath: string) {
+  private updateChildrenPaths(
+    folders: FolderInfo[],
+    parentId: string,
+    oldParentPath: string,
+    newParentPath: string
+  ) {
     const children = folders.filter(f => f.parentId === parentId)
-    
+
     for (const child of children) {
       const oldChildPath = child.path
       const newChildPath = oldChildPath.replace(oldParentPath, newParentPath)
       child.path = newChildPath
       child.updatedAt = new Date().toISOString()
-      
+
       // 递归更新子文件夹
       this.updateChildrenPaths(folders, child.id, oldChildPath, newChildPath)
     }
@@ -272,13 +305,13 @@ export class FoldersService {
   async deleteFolder(id: string, force?: boolean): Promise<void> {
     const folders = await this.loadFolders()
     const folderIndex = folders.findIndex(f => f.id === id)
-    
+
     if (folderIndex === -1) {
       throw new NotFoundException('文件夹不存在')
     }
 
     const folder = folders[folderIndex]
-    
+
     // 检查是否有子文件夹
     const hasChildren = folders.some(f => f.parentId === id)
     if (hasChildren && !force) {
@@ -312,11 +345,11 @@ export class FoldersService {
 
   private async deleteChildrenFolders(folders: FolderInfo[], parentId: string) {
     const children = folders.filter(f => f.parentId === parentId)
-    
+
     for (const child of children) {
       // 递归删除子文件夹的子文件夹
       await this.deleteChildrenFolders(folders, child.id)
-      
+
       // 删除子文件夹
       const childIndex = folders.findIndex(f => f.id === child.id)
       if (childIndex !== -1) {
@@ -340,7 +373,7 @@ export class FoldersService {
     // 验证文件夹是否存在
     const folders = await this.loadFolders()
     const folderExists = folders.some(f => f.id === folderId)
-    
+
     if (!folderExists) {
       throw new NotFoundException('目标文件夹不存在')
     }

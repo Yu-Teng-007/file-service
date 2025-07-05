@@ -87,6 +87,7 @@ export class FilesService {
         {
           accessLevel: uploadDto.accessLevel,
           customPath: uploadDto.customPath,
+          folderId: uploadDto.folderId,
           metadata,
           overwrite: uploadDto.overwrite,
         },
@@ -155,6 +156,7 @@ export class FilesService {
       uploadedBy: searchDto.uploadedBy,
       filename: searchDto.filename,
       originalName: searchDto.originalName,
+      search: searchDto.search,
       dateFrom: searchDto.dateFrom ? new Date(searchDto.dateFrom) : undefined,
       dateTo: searchDto.dateTo ? new Date(searchDto.dateTo) : undefined,
       minSize: searchDto.minSize,

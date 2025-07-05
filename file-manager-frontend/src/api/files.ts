@@ -64,6 +64,7 @@ export class FilesApi {
     if (options.category) formData.append('category', options.category)
     if (options.accessLevel) formData.append('accessLevel', options.accessLevel)
     if (options.customPath) formData.append('customPath', options.customPath)
+    if (options.folderId) formData.append('folderId', options.folderId)
     if (options.overwrite !== undefined) formData.append('overwrite', options.overwrite.toString())
     if (options.metadata) formData.append('metadata', JSON.stringify(options.metadata))
 
@@ -92,6 +93,7 @@ export class FilesApi {
     if (options.category) formData.append('category', options.category)
     if (options.accessLevel) formData.append('accessLevel', options.accessLevel)
     if (options.customPath) formData.append('customPath', options.customPath)
+    if (options.folderId) formData.append('folderId', options.folderId)
     if (options.overwrite !== undefined) formData.append('overwrite', options.overwrite.toString())
     if (options.metadata) formData.append('metadata', JSON.stringify(options.metadata))
 
@@ -214,9 +216,11 @@ export class FilesApi {
   /**
    * 获取文件夹列表
    */
-  static async getFolders(parentId?: string): Promise<FolderInfo[]> {
+  static async getFolders(parentId?: string, includeFiles: boolean = true): Promise<FolderInfo[]> {
     const params = new URLSearchParams()
     if (parentId) params.append('parentId', parentId)
+    // 默认包含文件统计信息
+    params.append('includeFiles', includeFiles.toString())
 
     const response = await apiClient.get<ApiResponse<FolderInfo[]>>(`/folders?${params.toString()}`)
     return response.data || []
