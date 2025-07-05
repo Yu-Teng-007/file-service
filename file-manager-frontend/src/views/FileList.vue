@@ -144,9 +144,36 @@
                     <Headset v-else-if="row.category === 'music'" />
                     <Document v-else />
                   </el-icon>
-                  <span class="file-name" @click="previewFile(row)">
-                    {{ row.originalName }}
-                  </span>
+
+                  <!-- 内联编辑模式 -->
+                  <div v-if="editingFileId === row.id" class="inline-edit">
+                    <el-input
+                      ref="editInputRef"
+                      v-model="editingFileName"
+                      size="small"
+                      @blur="handleRenameCancel"
+                      @keyup.enter="handleRenameSave(row)"
+                      @keyup.escape="handleRenameCancel"
+                    />
+                    <span class="file-extension">{{ getFileExtension(row.originalName) }}</span>
+                  </div>
+
+                  <!-- 正常显示模式 -->
+                  <div v-else class="file-name-display">
+                    <span class="file-name" @click="previewFile(row)">
+                      {{ row.originalName }}
+                    </span>
+                    <el-tooltip content="重命名" placement="top" :show-after="800">
+                      <el-button
+                        size="small"
+                        text
+                        class="rename-btn"
+                        @click.stop="startRename(row)"
+                      >
+                        <el-icon><Edit /></el-icon>
+                      </el-button>
+                    </el-tooltip>
+                  </div>
                 </div>
               </template>
             </el-table-column>
@@ -220,7 +247,6 @@
                     </el-button>
                     <template #dropdown>
                       <el-dropdown-menu class="action-dropdown">
-                        <el-dropdown-item command="rename" :icon="Edit">重命名</el-dropdown-item>
                         <el-dropdown-item command="move" :icon="FolderOpened">
                           移动
                         </el-dropdown-item>
@@ -279,9 +305,36 @@
               </div>
 
               <div class="file-info">
-                <div class="file-name" :title="file.originalName">
-                  {{ file.originalName }}
+                <!-- 内联编辑模式 -->
+                <div v-if="editingFileId === file.id" class="file-name-edit">
+                  <el-input
+                    ref="editInputRef"
+                    v-model="editingFileName"
+                    size="small"
+                    @blur="handleRenameCancel"
+                    @keyup.enter="handleRenameSave(file)"
+                    @keyup.escape="handleRenameCancel"
+                  />
+                  <span class="file-extension">{{ getFileExtension(file.originalName) }}</span>
                 </div>
+
+                <!-- 正常显示模式 -->
+                <div v-else class="file-name-display">
+                  <div class="file-name" :title="file.originalName">
+                    {{ file.originalName }}
+                  </div>
+                  <el-tooltip content="重命名" placement="top" :show-after="800">
+                    <el-button
+                      size="small"
+                      text
+                      class="rename-btn-grid"
+                      @click.stop="startRename(file)"
+                    >
+                      <el-icon><Edit /></el-icon>
+                    </el-button>
+                  </el-tooltip>
+                </div>
+
                 <div class="file-meta">
                   <span>{{ configStore.formatFileSize(file.size) }}</span>
                   <span>{{ formatTime(file.uploadedAt) }}</span>
@@ -327,9 +380,6 @@
       :file="selectedFile"
       @updated="handleFileUpdated"
     />
-
-    <!-- 重命名对话框 -->
-    <RenameDialog v-model="showRenameDialog" :file="selectedFile" @renamed="handleFileRenamed" />
 
     <!-- 移动文件对话框 -->
     <el-dialog
@@ -473,7 +523,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch, reactive } from 'vue'
+import { ref, computed, onMounted, watch, reactive, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
@@ -511,7 +561,6 @@ import ImageEditor from '@/components/ImageEditor.vue'
 import BatchOperations from '@/components/BatchOperations.vue'
 import TrashManager from '@/components/TrashManager.vue'
 import FilePropertiesDialog from '@/components/FilePropertiesDialog.vue'
-import RenameDialog from '@/components/RenameDialog.vue'
 
 const { t } = useI18n()
 const configStore = useConfigStore()
@@ -523,6 +572,11 @@ const searchQuery = ref('')
 const categoryFilter = ref('')
 const viewMode = ref<'table' | 'grid'>('table')
 const selectedFile = ref<FileInfo | null>(null)
+
+// 内联编辑状态
+const editingFileId = ref<string | null>(null)
+const editingFileName = ref('')
+const editInputRef = ref()
 const selectedFiles = ref<FileInfo[]>([])
 const currentFolderId = ref<string>()
 const breadcrumbPath = ref<FolderInfo[]>([])
@@ -531,7 +585,6 @@ const breadcrumbPath = ref<FolderInfo[]>([])
 const showPreviewDialog = ref(false)
 const showImageEditor = ref(false)
 const showPropertiesDialog = ref(false)
-const showRenameDialog = ref(false)
 const showTrashManager = ref(false)
 const showMoveDialog = ref(false)
 const showChangeCategoryDialog = ref(false)
@@ -848,13 +901,75 @@ const downloadFile = async (file: FileInfo) => {
   }
 }
 
+// 内联编辑相关方法
+const getFileExtension = (filename: string): string => {
+  const lastDotIndex = filename.lastIndexOf('.')
+  return lastDotIndex > 0 ? filename.substring(lastDotIndex) : ''
+}
+
+const getFileNameWithoutExtension = (filename: string): string => {
+  const lastDotIndex = filename.lastIndexOf('.')
+  return lastDotIndex > 0 ? filename.substring(0, lastDotIndex) : filename
+}
+
+const startRename = (file: FileInfo) => {
+  editingFileId.value = file.id
+  editingFileName.value = getFileNameWithoutExtension(file.originalName)
+
+  // 下一个tick后聚焦输入框并选中文本
+  nextTick(() => {
+    const input = editInputRef.value?.$el?.querySelector('input')
+    if (input) {
+      input.focus()
+      input.select()
+    }
+  })
+}
+
+const handleRenameCancel = () => {
+  editingFileId.value = null
+  editingFileName.value = ''
+}
+
+const handleRenameSave = async (file: FileInfo) => {
+  if (!editingFileName.value.trim()) {
+    ElMessage.error('文件名不能为空')
+    return
+  }
+
+  // 检查文件名是否包含非法字符
+  const invalidChars = /[<>:"/\\|?*]/
+  if (invalidChars.test(editingFileName.value)) {
+    ElMessage.error('文件名不能包含以下字符：< > : " / \\ | ? *')
+    return
+  }
+
+  const extension = getFileExtension(file.originalName)
+  const newFileName = editingFileName.value.trim() + extension
+
+  // 检查是否有变化
+  if (newFileName === file.originalName) {
+    handleRenameCancel()
+    return
+  }
+
+  try {
+    await FilesApi.updateFile(file.id, {
+      filename: newFileName,
+    })
+
+    ElMessage.success('重命名成功')
+    handleRenameCancel()
+    await filesStore.refreshFiles()
+  } catch (error) {
+    ElMessage.error('重命名失败')
+  }
+}
+
 const handleFileAction = (command: string, file: FileInfo) => {
   selectedFile.value = file
 
   switch (command) {
-    case 'rename':
-      showRenameDialog.value = true
-      break
     case 'move':
       // 初始化移动表单，设置默认值
       initializeMoveForm(file)
@@ -1016,7 +1131,10 @@ const handleBatchAction = async (command: string) => {
 
 // 批量操作处理
 const handleOperationComplete = async (operation: string, count: number) => {
-  ElMessage.success(t(`batch.${operation}Success`, { count }))
+  // 只有移动和更改分类操作需要在这里显示消息，其他操作已在 BatchOperations 组件中显示
+  if (operation === 'move' || operation === 'changeCategory') {
+    ElMessage.success(t(`batch.${operation}Success`, { count }))
+  }
   // 先刷新文件列表，再刷新文件夹统计
   await filesStore.refreshFiles()
   await foldersStore.refreshFolders()
@@ -1039,11 +1157,6 @@ const handleImageSaved = () => {
 const handleFileUpdated = () => {
   filesStore.refreshFiles()
   showPropertiesDialog.value = false
-}
-
-const handleFileRenamed = () => {
-  filesStore.refreshFiles()
-  showRenameDialog.value = false
 }
 
 // 监听器
@@ -1206,6 +1319,76 @@ onMounted(async () => {
 
 .file-name:hover {
   text-decoration: underline;
+}
+
+/* 内联编辑样式 */
+.inline-edit {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+}
+
+.inline-edit .el-input {
+  flex: 1;
+}
+
+.file-extension {
+  color: var(--el-text-color-regular);
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.file-name-display {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+
+.rename-btn {
+  opacity: 0;
+  transition: opacity 0.2s;
+  padding: 4px;
+  margin-left: 4px;
+}
+
+.file-name-cell:hover .rename-btn {
+  opacity: 1;
+}
+
+.rename-btn:hover {
+  color: var(--el-color-primary);
+  background-color: var(--el-color-primary-light-9);
+}
+
+/* 网格视图中的重命名按钮 */
+.file-name-edit {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 4px;
+}
+
+.file-name-edit .el-input {
+  flex: 1;
+}
+
+.file-name-display {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.rename-btn-grid {
+  opacity: 0;
+  transition: opacity 0.2s;
+  padding: 2px;
+  margin-left: 4px;
+}
+
+.file-card:hover .rename-btn-grid {
+  opacity: 1;
 }
 
 /* 操作按钮样式优化 */

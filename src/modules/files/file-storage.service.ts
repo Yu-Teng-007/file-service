@@ -361,21 +361,14 @@ export class FileStorageService {
       throw new NotFoundException('文件不存在')
     }
 
-    // 如果更新文件名，需要重命名物理文件
-    if (updates.filename && updates.filename !== metadata.filename) {
-      const oldPath = metadata.path
-      const newFilename = updates.filename + extname(metadata.filename)
-      const newPath = join(dirname(oldPath), newFilename)
-
-      await fs.rename(oldPath, newPath)
-
-      metadata.filename = newFilename
-      metadata.path = newPath
-      metadata.url = `/uploads/${metadata.category}/${newFilename}`
+    // 如果更新显示文件名，只更新 originalName，不重命名物理文件
+    if (updates.filename && updates.filename !== metadata.originalName) {
+      metadata.originalName = updates.filename
     }
 
-    // 更新其他字段
-    Object.assign(metadata, updates)
+    // 更新其他字段（排除 filename，因为我们已经处理了）
+    const { filename, ...otherUpdates } = updates
+    Object.assign(metadata, otherUpdates)
 
     this.fileMetadata.set(fileId, metadata)
     await this.saveMetadata()

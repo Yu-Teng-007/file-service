@@ -15,15 +15,7 @@
             <div class="property-grid">
               <div class="property-item">
                 <label>文件名：</label>
-                <div class="filename-input-container">
-                  <el-input
-                    v-model="fileNameWithoutExt"
-                    placeholder="请输入文件名"
-                    size="small"
-                    class="filename-input"
-                  />
-                  <span class="file-extension">{{ fileExtension }}</span>
-                </div>
+                <span class="property-value">{{ file.originalName }}</span>
               </div>
 
               <div class="property-item">
@@ -186,24 +178,6 @@ const fullFileUrl = computed(() => {
   return FilesApi.getFileDirectUrl(props.file.url)
 })
 
-// 文件扩展名
-const fileExtension = computed(() => {
-  if (!props.file) return ''
-  const filename = props.file.originalName
-  const lastDotIndex = filename.lastIndexOf('.')
-  return lastDotIndex > 0 ? filename.substring(lastDotIndex) : ''
-})
-
-// 不带扩展名的文件名
-const fileNameWithoutExt = ref('')
-
-// 监听文件名变化，更新完整文件名
-watch(fileNameWithoutExt, newName => {
-  if (newName && fileExtension.value) {
-    formData.value.filename = newName + fileExtension.value
-  }
-})
-
 // 方法
 const getCategoryLabel = (category: string) => {
   const categoryMap: Record<string, string> = {
@@ -246,15 +220,8 @@ const openFileUrl = () => {
 
 const initFormData = () => {
   if (props.file) {
-    const originalName = props.file.originalName
-    const lastDotIndex = originalName.lastIndexOf('.')
-    const nameWithoutExt = lastDotIndex > 0 ? originalName.substring(0, lastDotIndex) : originalName
-
-    // 设置不带扩展名的文件名
-    fileNameWithoutExt.value = nameWithoutExt
-
     formData.value = {
-      filename: originalName, // 使用原始文件名
+      filename: props.file.originalName, // 保留原始文件名，但不允许编辑
       accessLevel: props.file.accessLevel,
       metadata: props.file.metadata || {},
     }
@@ -280,7 +247,6 @@ const handleSave = async () => {
     }
 
     const updates = {
-      filename: formData.value.filename,
       accessLevel: formData.value.accessLevel,
       metadata,
     }
@@ -414,35 +380,6 @@ watch(() => props.file, initFormData, { immediate: true })
   display: flex;
   gap: 8px;
   justify-content: flex-end;
-}
-
-/* 文件名输入样式 */
-.filename-input-container {
-  display: flex;
-  align-items: center;
-  border: 1px solid var(--el-border-color);
-  border-radius: 4px;
-  overflow: hidden;
-  background-color: var(--el-bg-color);
-}
-
-.filename-input {
-  flex: 1;
-}
-
-.filename-input :deep(.el-input__wrapper) {
-  border: none;
-  box-shadow: none;
-  border-radius: 0;
-}
-
-.file-extension {
-  padding: 0 12px;
-  background-color: var(--el-bg-color-page);
-  color: var(--el-text-color-regular);
-  font-size: 13px;
-  border-left: 1px solid var(--el-border-color-light);
-  white-space: nowrap;
 }
 
 .checksum {
