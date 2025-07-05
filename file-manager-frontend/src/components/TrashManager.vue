@@ -72,7 +72,7 @@
             <el-table-column :label="$t('file.category')" width="120">
               <template #default="{ row }">
                 <el-tag :type="getCategoryType(row.originalFileInfo.category)">
-                  {{ $t(`category.${row.originalFileInfo.category}`) }}
+                  {{ $t(`file.categories.${row.originalFileInfo.category}`) }}
                 </el-tag>
               </template>
             </el-table-column>
