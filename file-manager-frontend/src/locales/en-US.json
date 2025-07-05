@@ -34,6 +34,7 @@
     "size": "Size",
     "type": "Type",
     "category": "Category",
+    "folder": "Folder",
     "accessLevel": "Access Level",
     "uploadTime": "Upload Time",
     "actions": "Actions",
@@ -88,7 +89,8 @@
     "startUpload": "Start Upload",
     "pauseUpload": "Pause Upload",
     "clearQueue": "Clear Queue",
-    "removeFile": "Remove File"
+    "removeFile": "Remove File",
+    "autoDetect": "Auto Detect"
   },
   "settings": {
     "title": "Settings",
@@ -210,6 +212,7 @@
   "trash": {
     "title": "Trash",
     "searchPlaceholder": "Search deleted files...",
+    "empty": "Trash is empty",
     "emptyTrash": "Empty Trash",
     "restore": "Restore",
     "permanentDelete": "Permanent Delete",

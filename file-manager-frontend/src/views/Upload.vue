@@ -100,10 +100,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { useI18n } from 'vue-i18n'
-import { ElMessage } from 'element-plus'
 import { Document, Picture, VideoPlay, Headset } from '@element-plus/icons-vue'
 import dayjs from 'dayjs'
 import FileUpload from '@/components/FileUpload.vue'
@@ -113,7 +111,6 @@ import FilesApi from '@/api/files'
 import type { FileInfo } from '@/types/file'
 
 const router = useRouter()
-const { t } = useI18n()
 const configStore = useConfigStore()
 const filesStore = useFilesStore()
 
@@ -135,8 +132,8 @@ const getStatusText = (status: string) => {
 }
 
 // 方法
-const handleUploadSuccess = (files: any[]) => {
-  ElMessage.success(`成功上传 ${files.length} 个文件`)
+const handleUploadSuccess = () => {
+  // 不显示重复的成功提示，FileUpload组件已经显示了
   loadRecentFiles()
 }
 

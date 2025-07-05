@@ -22,7 +22,7 @@
           <el-dropdown-item command="changeAccess" :icon="Lock">
             {{ $t('batch.changeAccess') }}
           </el-dropdown-item>
-          <el-dropdown-item command="delete" :icon="Delete" divided>
+          <el-dropdown-item command="delete" :icon="Delete" divided class="danger-item">
             {{ $t('batch.delete') }}
           </el-dropdown-item>
         </el-dropdown-menu>
@@ -493,5 +493,19 @@ onMounted(() => {
 
 :deep(.el-checkbox__label) {
   padding-left: 8px;
+}
+
+/* 危险操作样式 */
+:deep(.danger-item) {
+  color: var(--el-color-danger) !important;
+
+  &:hover {
+    background-color: var(--el-color-danger-light-9) !important;
+    color: var(--el-color-danger-dark-2) !important;
+  }
+
+  .el-icon {
+    color: var(--el-color-danger) !important;
+  }
 }
 </style>

@@ -426,6 +426,25 @@ export class FileStorageService {
   }
 
   /**
+   * 将文件移动到回收站
+   * 用于批量删除操作
+   */
+  async moveFileToTrash(fileId: string): Promise<void> {
+    // 获取文件信息
+    const fileInfo = await this.getFileInfo(fileId)
+
+    // 动态导入 TrashService 以避免循环依赖
+    const { TrashService } = await import('../trash/trash.service')
+    const trashService = new TrashService(this.configService, this)
+
+    // 将文件移动到回收站
+    await trashService.moveToTrash(fileInfo)
+
+    // 从存储服务中移除文件记录（但不删除物理文件，因为已经移动到回收站）
+    this.removeFileFromMetadata(fileId)
+  }
+
+  /**
    * 恢复文件元数据
    * 用于从回收站恢复文件时
    */
@@ -583,7 +602,8 @@ export class FileStorageService {
       try {
         switch (operation.action) {
           case 'delete':
-            await this.deleteFile(fileId)
+            // 批量删除也应该移动到回收站，而不是直接删除
+            await this.moveFileToTrash(fileId)
             break
           case 'changeAccess':
             if (operation.targetAccessLevel) {

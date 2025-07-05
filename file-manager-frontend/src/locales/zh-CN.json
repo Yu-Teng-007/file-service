@@ -34,6 +34,7 @@
     "size": "大小",
     "type": "类型",
     "category": "分类",
+    "folder": "文件夹",
     "accessLevel": "访问级别",
     "uploadTime": "上传时间",
     "actions": "操作",
@@ -88,7 +89,8 @@
     "startUpload": "开始上传",
     "pauseUpload": "暂停上传",
     "clearQueue": "清空队列",
-    "removeFile": "移除文件"
+    "removeFile": "移除文件",
+    "autoDetect": "自动检测"
   },
   "settings": {
     "title": "系统设置",
@@ -210,6 +212,7 @@
   "trash": {
     "title": "回收站",
     "searchPlaceholder": "搜索已删除的文件...",
+    "empty": "回收站为空",
     "emptyTrash": "清空回收站",
     "restore": "恢复",
     "permanentDelete": "永久删除",

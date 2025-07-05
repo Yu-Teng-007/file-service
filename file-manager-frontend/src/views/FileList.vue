@@ -680,7 +680,7 @@ const updateBreadcrumbPath = (folder: FolderInfo | null) => {
 
   // 构建面包屑路径
   const path: FolderInfo[] = []
-  let current = folder
+  let current: FolderInfo | null = folder
   while (current) {
     path.unshift(current)
     current = current.parentId ? findFolderById(current.parentId) : null
@@ -689,8 +689,8 @@ const updateBreadcrumbPath = (folder: FolderInfo | null) => {
 }
 
 const findFolderById = (id: string): FolderInfo | null => {
-  // 这里需要从文件夹树中查找，简化实现
-  return null
+  // 从文件夹列表中查找
+  return foldersStore.folders.find(folder => folder.id === id) || null
 }
 
 const handleFolderCreated = (folder: FolderInfo) => {
@@ -893,7 +893,13 @@ watch(
 )
 
 // 生命周期
-onMounted(() => {
+onMounted(async () => {
+  // 强制刷新文件夹列表，确保统计信息是最新的
+  try {
+    await foldersStore.refreshFolders()
+  } catch (error) {
+    console.error('Failed to refresh folders:', error)
+  }
   // 不在这里加载文件，等待文件夹选择后再加载
   // filesStore.loadFiles()
 })

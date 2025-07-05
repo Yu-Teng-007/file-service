@@ -259,6 +259,13 @@ export class FilesApi {
     })
   }
 
+  /**
+   * 刷新文件夹统计信息
+   */
+  static async refreshFolderStats(): Promise<void> {
+    await apiClient.post<ApiResponse>('/folders/refresh-stats')
+  }
+
   // ==================== 图片处理 API ====================
 
   /**

@@ -47,13 +47,33 @@
     <div v-if="showOptions" class="upload-options">
       <el-form :model="uploadOptions" label-width="100px" size="small">
         <el-form-item :label="$t('file.category')">
-          <el-select v-model="uploadOptions.category" placeholder="自动检测">
-            <el-option
+          <el-radio-group v-model="uploadOptions.category">
+            <el-radio :value="undefined" border>{{ $t('upload.autoDetect') }}</el-radio>
+            <el-radio
               v-for="category in categories"
               :key="category.value"
-              :label="category.label"
               :value="category.value"
-            />
+              border
+            >
+              {{ category.label }}
+            </el-radio>
+          </el-radio-group>
+        </el-form-item>
+
+        <el-form-item :label="$t('file.folder')">
+          <el-select v-model="uploadOptions.folderId" placeholder="选择文件夹" clearable filterable>
+            <el-option
+              v-for="folder in availableFolders"
+              :key="folder.id"
+              :label="folder.name"
+              :value="folder.id"
+            >
+              <span class="folder-option">
+                <el-icon><Folder /></el-icon>
+                {{ folder.name }}
+                <span class="folder-path">{{ folder.path }}</span>
+              </span>
+            </el-option>
           </el-select>
         </el-form-item>
 
@@ -66,10 +86,6 @@
               :value="level.value"
             />
           </el-select>
-        </el-form-item>
-
-        <el-form-item label="自定义路径">
-          <el-input v-model="uploadOptions.customPath" placeholder="可选，留空则自动生成" />
         </el-form-item>
 
         <el-form-item label="覆盖同名文件">
@@ -139,9 +155,10 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ElMessage } from 'element-plus'
-import { Upload, Document } from '@element-plus/icons-vue'
+import { Upload, Document, Folder } from '@element-plus/icons-vue'
 import { useConfigStore } from '@/stores/config'
 import { useFilesStore } from '@/stores/files'
+import { useFoldersStore } from '@/stores/folders'
 import { FileCategory, FileAccessLevel } from '@/types/file'
 
 interface Props {
@@ -175,6 +192,7 @@ const emit = defineEmits<{
 const { t } = useI18n()
 const configStore = useConfigStore()
 const filesStore = useFilesStore()
+const foldersStore = useFoldersStore()
 
 // 引用
 const dropZone = ref<HTMLElement>()
@@ -189,7 +207,7 @@ const fileQueue = ref<FileItem[]>([])
 const uploadOptions = ref({
   category: undefined as FileCategory | undefined,
   accessLevel: FileAccessLevel.PUBLIC,
-  customPath: '',
+  folderId: undefined as string | undefined,
   overwrite: false,
 })
 
@@ -210,6 +228,11 @@ const accessLevels = computed(() => [
 
 const allowedTypesText = computed(() => {
   return configStore.allowedFileTypes.join(', ')
+})
+
+// 可用文件夹列表（包含【全部】文件夹）
+const availableFolders = computed(() => {
+  return foldersStore.folders
 })
 
 // 方法
@@ -320,7 +343,7 @@ const startUpload = async () => {
           {
             category: uploadOptions.value.category,
             accessLevel: uploadOptions.value.accessLevel,
-            customPath: uploadOptions.value.customPath || undefined,
+            folderId: uploadOptions.value.folderId,
             overwrite: uploadOptions.value.overwrite,
           },
           progress => {
@@ -341,6 +364,13 @@ const startUpload = async () => {
     if (successFiles.length > 0) {
       emit('success', successFiles)
       ElMessage.success(`成功上传 ${successFiles.length} 个文件`)
+
+      // 刷新文件夹统计信息
+      try {
+        await foldersStore.refreshFolders()
+      } catch (error) {
+        console.error('Failed to refresh folder stats:', error)
+      }
     }
   } finally {
     uploading.value = false
@@ -364,10 +394,22 @@ const pauseUpload = () => {
 }
 
 // 生命周期
-onMounted(() => {
+onMounted(async () => {
   // 阻止页面默认的拖拽行为
   document.addEventListener('dragover', e => e.preventDefault())
   document.addEventListener('drop', e => e.preventDefault())
+
+  // 加载文件夹列表
+  try {
+    await foldersStore.loadFolders()
+    // 默认选中【全部】文件夹
+    const allFolder = foldersStore.folders.find(folder => folder.id === 'all')
+    if (allFolder) {
+      uploadOptions.value.folderId = allFolder.id
+    }
+  } catch (error) {
+    console.error('Failed to load folders:', error)
+  }
 })
 
 onUnmounted(() => {
@@ -376,7 +418,7 @@ onUnmounted(() => {
 })
 </script>
 
-<style scoped>
+<style scoped lang="scss">
 .file-upload {
   width: 100%;
 }
@@ -446,6 +488,18 @@ onUnmounted(() => {
   padding: 20px;
   background-color: var(--el-bg-color-page);
   border-radius: 8px;
+}
+
+.folder-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.folder-path {
+  color: var(--el-text-color-secondary);
+  font-size: 12px;
+  margin-left: auto;
 }
 
 .upload-queue {
