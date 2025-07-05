@@ -8,11 +8,7 @@ import { ConfigService } from '@nestjs/config'
 import { join } from 'path'
 import { promises as fs } from 'fs'
 import { v4 as uuidv4 } from 'uuid'
-import {
-  CreateTagDto,
-  UpdateTagDto,
-  TagResponseDto,
-} from '../../types/dto'
+import { CreateTagDto, UpdateTagDto, TagResponseDto } from '../../dto'
 
 interface Tag {
   id: string
@@ -188,9 +184,7 @@ export class TagsService {
 
     // 检查标签名称是否与其他标签重复
     if (name) {
-      const existingTag = tags.find(t => 
-        t.name.toLowerCase() === name.toLowerCase() && t.id !== id
-      )
+      const existingTag = tags.find(t => t.name.toLowerCase() === name.toLowerCase() && t.id !== id)
       if (existingTag) {
         throw new ConflictException('标签名称已存在')
       }
@@ -251,9 +245,7 @@ export class TagsService {
 
     // 添加新的关联关系（避免重复）
     for (const tagId of tagIds) {
-      const existingRelation = relations.find(r => 
-        r.fileId === fileId && r.tagId === tagId
-      )
+      const existingRelation = relations.find(r => r.fileId === fileId && r.tagId === tagId)
 
       if (!existingRelation) {
         relations.push({
@@ -269,10 +261,10 @@ export class TagsService {
 
   async removeTagsFromFile(fileId: string, tagIds: string[]): Promise<void> {
     const relations = await this.loadFileTagRelations()
-    
+
     // 移除指定的关联关系
-    const filteredRelations = relations.filter(r => 
-      !(r.fileId === fileId && tagIds.includes(r.tagId))
+    const filteredRelations = relations.filter(
+      r => !(r.fileId === fileId && tagIds.includes(r.tagId))
     )
 
     await this.saveFileTagRelations(filteredRelations)
@@ -282,9 +274,7 @@ export class TagsService {
     const relations = await this.loadFileTagRelations()
     const tags = await this.loadTags()
 
-    const fileTagIds = relations
-      .filter(r => r.fileId === fileId)
-      .map(r => r.tagId)
+    const fileTagIds = relations.filter(r => r.fileId === fileId).map(r => r.tagId)
 
     const fileTags = tags.filter(t => fileTagIds.includes(t.id))
 
@@ -308,17 +298,15 @@ export class TagsService {
     }
 
     const relations = await this.loadFileTagRelations()
-    return relations
-      .filter(r => r.tagId === tagId)
-      .map(r => r.fileId)
+    return relations.filter(r => r.tagId === tagId).map(r => r.fileId)
   }
 
   async getFilesByTags(tagIds: string[]): Promise<string[]> {
     const relations = await this.loadFileTagRelations()
-    
+
     // 获取包含任一指定标签的文件
     const fileIds = new Set<string>()
-    
+
     for (const relation of relations) {
       if (tagIds.includes(relation.tagId)) {
         fileIds.add(relation.fileId)

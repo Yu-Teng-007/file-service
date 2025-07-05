@@ -8,7 +8,7 @@ import { ConfigService } from '@nestjs/config'
 import { join } from 'path'
 import { promises as fs } from 'fs'
 import { v4 as uuidv4 } from 'uuid'
-import { CreateFolderDto, UpdateFolderDto, FolderResponseDto } from '../../types/dto'
+import { CreateFolderDto, UpdateFolderDto, FolderResponseDto } from '../../dto'
 import { FileStorageService } from '../files/file-storage.service'
 
 interface FolderInfo {

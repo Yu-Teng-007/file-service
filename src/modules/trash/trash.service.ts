@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config'
 import { join, dirname } from 'path'
 import { promises as fs } from 'fs'
 import { v4 as uuidv4 } from 'uuid'
-import { TrashItemResponseDto, TrashStatsResponseDto } from '../../types/dto'
+import { TrashItemResponseDto, TrashStatsResponseDto } from '../../dto'
 import { FileStorageService } from '../files/file-storage.service'
 
 interface TrashItem {

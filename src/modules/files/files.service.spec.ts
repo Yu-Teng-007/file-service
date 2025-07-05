@@ -7,7 +7,7 @@ import { FileStorageService } from './file-storage.service'
 import { CacheService } from '../cache/cache.service'
 import { ErrorRecoveryService } from '../../common/services/error-recovery.service'
 import { FileCategory, FileAccessLevel, FileReadMode } from '../../types/file.types'
-import { FileUploadDto, FileUpdateDto, FileBatchOperationDto } from '../../types/dto'
+import { FileUploadDto, FileUpdateDto, FileBatchOperationDto } from '../../dto'
 
 describe('FilesService', () => {
   let service: FilesService

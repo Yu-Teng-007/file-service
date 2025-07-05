@@ -14,12 +14,7 @@ import {
 import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiQuery, ApiBody } from '@nestjs/swagger'
 import { FoldersService } from './folders.service'
 import { ApiKeyAuth } from '../auth/decorators/api-key-auth.decorator'
-import {
-  CreateFolderDto,
-  UpdateFolderDto,
-  FolderResponseDto,
-  ApiResponseDto,
-} from '../../types/dto'
+import { CreateFolderDto, UpdateFolderDto, FolderResponseDto, ApiResponseDto } from '../../dto'
 
 @ApiTags('folders')
 @Controller('folders')

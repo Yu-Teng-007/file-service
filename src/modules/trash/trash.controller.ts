@@ -10,7 +10,7 @@ import {
 import { ApiTags, ApiOperation, ApiResponse, ApiBody } from '@nestjs/swagger'
 import { TrashService } from './trash.service'
 import { ApiKeyAuth } from '../auth/decorators/api-key-auth.decorator'
-import { TrashItemResponseDto, ApiResponseDto, TrashStatsResponseDto } from '../../types/dto'
+import { TrashItemResponseDto, ApiResponseDto, TrashStatsResponseDto } from '../../dto'
 
 @ApiTags('trash')
 @Controller('files/trash')

@@ -10,21 +10,10 @@ import {
   ParseUUIDPipe,
   BadRequestException,
 } from '@nestjs/common'
-import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
-  ApiParam,
-  ApiBody,
-} from '@nestjs/swagger'
+import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBody } from '@nestjs/swagger'
 import { TagsService } from './tags.service'
 import { ApiKeyAuth } from '../auth/decorators/api-key-auth.decorator'
-import {
-  CreateTagDto,
-  UpdateTagDto,
-  TagResponseDto,
-  ApiResponseDto,
-} from '../../types/dto'
+import { CreateTagDto, UpdateTagDto, TagResponseDto, ApiResponseDto } from '../../dto'
 
 @ApiTags('tags')
 @Controller('tags')
@@ -78,9 +67,7 @@ export class TagsController {
   })
   @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: '参数错误' })
   @ApiResponse({ status: HttpStatus.CONFLICT, description: '标签已存在' })
-  async createTag(
-    @Body() createTagDto: CreateTagDto
-  ): Promise<ApiResponseDto<TagResponseDto>> {
+  async createTag(@Body() createTagDto: CreateTagDto): Promise<ApiResponseDto<TagResponseDto>> {
     const tag = await this.tagsService.createTag(createTagDto)
     return {
       success: true,
@@ -123,9 +110,7 @@ export class TagsController {
     type: ApiResponseDto,
   })
   @ApiResponse({ status: HttpStatus.NOT_FOUND, description: '标签不存在' })
-  async deleteTag(
-    @Param('id', ParseUUIDPipe) id: string
-  ): Promise<ApiResponseDto> {
+  async deleteTag(@Param('id', ParseUUIDPipe) id: string): Promise<ApiResponseDto> {
     await this.tagsService.deleteTag(id)
     return {
       success: true,
@@ -140,9 +125,7 @@ export class TagsController {
     status: HttpStatus.OK,
     description: '获取文件列表成功',
   })
-  async getTagFiles(
-    @Param('id', ParseUUIDPipe) id: string
-  ) {
+  async getTagFiles(@Param('id', ParseUUIDPipe) id: string) {
     const files = await this.tagsService.getTagFiles(id)
     return {
       success: true,

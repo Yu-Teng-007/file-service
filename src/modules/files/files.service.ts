@@ -36,7 +36,7 @@ import {
   FileResponseDto,
   FileListResponseDto,
   FileStatsResponseDto,
-} from '../../types/dto'
+} from '../../dto'
 
 @Injectable()
 export class FilesService {

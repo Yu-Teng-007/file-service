@@ -43,7 +43,7 @@ import {
   FileListResponseDto,
   FileStatsResponseDto,
   ApiResponseDto,
-} from '../../types/dto'
+} from '../../dto'
 
 @ApiTags('files')
 @Controller('files')
