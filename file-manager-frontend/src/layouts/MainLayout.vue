@@ -300,17 +300,6 @@ configStore.init()
   align-items: center;
 }
 
-.sidebar-menu :deep(.el-menu-item:hover) {
-  transform: translateX(2px);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  background-color: var(--el-color-primary-light-9);
-}
-
-.sidebar-menu :deep(.el-menu-item.is-active) {
-  transform: translateX(4px);
-  box-shadow: 0 4px 12px rgba(64, 158, 255, 0.2);
-}
-
 /* 优化菜单图标和文字的过渡 */
 .sidebar-menu :deep(.el-menu-item .el-icon) {
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
