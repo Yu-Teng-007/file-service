@@ -95,7 +95,6 @@ export interface FileStats {
   accessLevelCounts: Record<FileAccessLevel, number>
 }
 
-// 文件内容读取相关类型定义
 export enum FileReadMode {
   FULL = 'full', // 完整读取到内存
   STREAM = 'stream', // 流式读取
@@ -141,9 +140,7 @@ export interface FileReadStats {
   totalBytesRead: number
 }
 
-// File type configurations
 export const FILE_TYPE_CONFIGS: Record<string, FileTypeConfig> = {
-  // Images
   jpg: {
     category: FileCategory.IMAGE,
     allowedExtensions: ['.jpg', '.jpeg'],
@@ -236,7 +233,6 @@ export const FILE_TYPE_CONFIGS: Record<string, FileTypeConfig> = {
     description: 'HEIF图片文件',
   },
 
-  // Scripts
   js: {
     category: FileCategory.SCRIPT,
     allowedExtensions: ['.js'],
@@ -259,7 +255,6 @@ export const FILE_TYPE_CONFIGS: Record<string, FileTypeConfig> = {
     description: 'JSON数据文件',
   },
 
-  // Styles
   css: {
     category: FileCategory.STYLE,
     allowedExtensions: ['.css'],
@@ -282,7 +277,6 @@ export const FILE_TYPE_CONFIGS: Record<string, FileTypeConfig> = {
     description: 'Less样式表文件',
   },
 
-  // Fonts
   ttf: {
     category: FileCategory.FONT,
     allowedExtensions: ['.ttf'],
@@ -312,7 +306,6 @@ export const FILE_TYPE_CONFIGS: Record<string, FileTypeConfig> = {
     description: 'EOT字体文件',
   },
 
-  // Documents
   pdf: {
     category: FileCategory.DOCUMENT,
     allowedExtensions: ['.pdf'],
@@ -342,7 +335,6 @@ export const FILE_TYPE_CONFIGS: Record<string, FileTypeConfig> = {
     description: 'Word文档文件(新版)',
   },
 
-  // Music
   mp3: {
     category: FileCategory.MUSIC,
     allowedExtensions: ['.mp3'],
