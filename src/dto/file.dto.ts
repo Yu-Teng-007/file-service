@@ -287,6 +287,14 @@ export class FileUpdateDto {
   accessLevel?: FileAccessLevel
 
   @ApiPropertyOptional({
+    enum: FileCategory,
+    description: '文件分类标记 / File category tag',
+  })
+  @IsOptional()
+  @IsEnum(FileCategory)
+  category?: FileCategory
+
+  @ApiPropertyOptional({
     description: '文件元数据（JSON字符串）/ File metadata (JSON string)',
   })
   @IsOptional()

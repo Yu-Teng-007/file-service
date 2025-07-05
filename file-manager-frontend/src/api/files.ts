@@ -113,7 +113,7 @@ export class FilesApi {
    */
   static async updateFile(
     id: string,
-    updates: Partial<Pick<FileInfo, 'filename' | 'accessLevel' | 'metadata'>>
+    updates: Partial<Pick<FileInfo, 'filename' | 'accessLevel' | 'category' | 'metadata'>>
   ): Promise<FileInfo> {
     const response = await apiClient.put<ApiResponse<FileInfo>>(`/files/${id}`, updates)
     return response.data!

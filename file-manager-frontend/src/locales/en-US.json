@@ -273,6 +273,8 @@
     "downloadError": "Batch download failed",
     "moveSuccess": "Successfully moved {count} files",
     "moveError": "Failed to move files",
+    "changeCategorySuccess": "Successfully changed category for {count} files",
+    "changeCategoryError": "Failed to change category",
     "copySuccess": "Successfully copied {count} files",
     "copyError": "Failed to copy files",
     "tagsSuccess": "Successfully added tags to {count} files",

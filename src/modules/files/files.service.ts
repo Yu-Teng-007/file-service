@@ -220,6 +220,7 @@ export class FilesService {
     const updates: Partial<UploadedFileInfo> = {}
     if (updateDto.filename) updates.filename = updateDto.filename
     if (updateDto.accessLevel) updates.accessLevel = updateDto.accessLevel
+    if (updateDto.category) updates.category = updateDto.category
     if (metadata) updates.metadata = metadata
 
     const fileInfo = await this.storageService.updateFileInfo(id, updates)

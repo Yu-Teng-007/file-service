@@ -13,6 +13,7 @@
           <el-dropdown-item command="move" :icon="FolderOpened">
             {{ $t('batch.move') }}
           </el-dropdown-item>
+          <el-dropdown-item command="changeCategory" :icon="Collection">更改分类</el-dropdown-item>
           <el-dropdown-item command="copy" :icon="CopyDocument">
             {{ $t('batch.copy') }}
           </el-dropdown-item>
@@ -29,13 +30,39 @@
       </template>
     </el-dropdown>
 
-    <!-- 移动/复制对话框 -->
-    <el-dialog v-model="showMoveDialog" :title="moveDialogTitle" width="500px">
+    <!-- 移动文件对话框 -->
+    <el-dialog
+      v-model="showMoveDialog"
+      title="批量移动文件"
+      width="520px"
+      class="batch-move-dialog"
+      :close-on-click-modal="false"
+    >
       <div class="move-dialog-content">
-        <p>{{ $t('batch.moveDescription', { count: selectedFiles.length }) }}</p>
+        <!-- 批量操作信息 -->
+        <div class="batch-info-card">
+          <div class="batch-icon">
+            <el-icon size="24"><FolderOpened /></el-icon>
+          </div>
+          <div class="batch-details">
+            <div class="batch-title">批量移动操作</div>
+            <div class="batch-meta">
+              已选择
+              <strong>{{ selectedFiles.length }}</strong>
+              个文件
+            </div>
+          </div>
+        </div>
 
-        <el-form :model="moveForm" label-width="100px">
-          <el-form-item :label="$t('batch.targetFolder')">
+        <!-- 操作说明 -->
+        <div class="operation-description">
+          <el-icon class="info-icon"><InfoFilled /></el-icon>
+          <span>选择文件的目标文件夹</span>
+        </div>
+
+        <!-- 文件夹选择 -->
+        <el-form :model="moveForm" class="move-form">
+          <el-form-item label="目标文件夹">
             <el-tree-select
               v-model="moveForm.folderId"
               :data="foldersStore.folderTree"
@@ -43,33 +70,95 @@
               :placeholder="$t('batch.selectFolder')"
               clearable
               check-strictly
+              class="folder-selector"
             />
-          </el-form-item>
-
-          <el-form-item :label="$t('batch.targetCategory')">
-            <el-select
-              v-model="moveForm.category"
-              :placeholder="$t('batch.selectCategory')"
-              clearable
-            >
-              <el-option
-                v-for="category in categories"
-                :key="category.value"
-                :label="category.label"
-                :value="category.value"
-              />
-            </el-select>
           </el-form-item>
         </el-form>
       </div>
 
       <template #footer>
-        <el-button @click="showMoveDialog = false">
-          {{ $t('common.cancel') }}
-        </el-button>
-        <el-button type="primary" :loading="processing" @click="handleMoveConfirm">
-          {{ currentOperation === 'move' ? $t('batch.move') : $t('batch.copy') }}
-        </el-button>
+        <div class="dialog-footer">
+          <el-button @click="showMoveDialog = false" size="default">
+            {{ $t('common.cancel') }}
+          </el-button>
+          <el-button type="primary" :loading="processing" @click="handleMoveConfirm" size="default">
+            <el-icon v-if="!processing"><FolderOpened /></el-icon>
+            确认移动
+          </el-button>
+        </div>
+      </template>
+    </el-dialog>
+
+    <!-- 更改分类对话框 -->
+    <el-dialog
+      v-model="showChangeCategoryDialog"
+      title="批量更改分类"
+      width="520px"
+      class="batch-change-category-dialog"
+      :close-on-click-modal="false"
+    >
+      <div class="change-category-dialog-content">
+        <!-- 批量操作信息 -->
+        <div class="batch-info-card">
+          <div class="batch-icon">
+            <el-icon size="24"><Edit /></el-icon>
+          </div>
+          <div class="batch-details">
+            <div class="batch-title">批量更改分类</div>
+            <div class="batch-meta">
+              已选择
+              <strong>{{ selectedFiles.length }}</strong>
+              个文件
+            </div>
+          </div>
+        </div>
+
+        <!-- 操作说明 -->
+        <div class="operation-description">
+          <el-icon class="info-icon"><InfoFilled /></el-icon>
+          <span>为选中的文件设置新的分类标记</span>
+        </div>
+
+        <!-- 分类选择 -->
+        <el-form :model="changeCategoryForm" class="category-form">
+          <el-form-item label="选择分类">
+            <div class="category-grid">
+              <el-radio-group v-model="changeCategoryForm.category" class="category-radio-group">
+                <el-radio
+                  v-for="category in categories"
+                  :key="category.value"
+                  :value="category.value"
+                  :label="category.value"
+                  class="category-radio"
+                >
+                  <div class="category-option">
+                    <el-icon class="category-icon">
+                      <component :is="getCategoryIcon(category.value)" />
+                    </el-icon>
+                    <span class="category-label">{{ category.label }}</span>
+                  </div>
+                </el-radio>
+              </el-radio-group>
+            </div>
+          </el-form-item>
+        </el-form>
+      </div>
+
+      <template #footer>
+        <div class="dialog-footer">
+          <el-button @click="showChangeCategoryDialog = false" size="default">
+            {{ $t('common.cancel') }}
+          </el-button>
+          <el-button
+            type="primary"
+            :loading="processing"
+            @click="handleChangeCategoryConfirm"
+            size="default"
+          >
+            <el-icon v-if="!processing"><Edit /></el-icon>
+            确认更改
+          </el-button>
+        </div>
       </template>
     </el-dialog>
 
@@ -169,20 +258,20 @@ import {
   PriceTag,
   Lock,
   Delete,
+  Collection,
+  Edit,
+  InfoFilled,
+  Document,
+  Picture,
+  VideoPlay,
+  Headset,
 } from '@element-plus/icons-vue'
 import { useI18n } from 'vue-i18n'
 import { useFoldersStore } from '@/stores/folders'
 import FilesApi from '@/api/files'
-import type {
-  FileInfo,
-  FolderInfo,
-  FileTag,
-  FileCategory,
-  FileAccessLevel,
-  BatchOperation,
-} from '@/types/file'
+import { FileCategory, FileAccessLevel } from '@/types/file'
+import type { FileInfo, FolderInfo, FileTag, BatchOperation } from '@/types/file'
 
-// Props and Emits
 interface Props {
   selectedFiles: FileInfo[]
 }
@@ -194,30 +283,25 @@ interface Emits {
 const props = defineProps<Props>()
 const emit = defineEmits<Emits>()
 
-// Composables
 const { t } = useI18n()
 const foldersStore = useFoldersStore()
 
-// Computed
 const hasSelection = computed(() => props.selectedFiles.length > 0)
 
-const moveDialogTitle = computed(() => {
-  return currentOperation.value === 'move' ? t('batch.moveFiles') : t('batch.copyFiles')
-})
-
-// State
 const processing = ref(false)
 const showMoveDialog = ref(false)
+const showChangeCategoryDialog = ref(false)
 const showTagsDialog = ref(false)
 const showAccessDialog = ref(false)
-const currentOperation = ref<'move' | 'copy'>('move')
 
 const availableTags = ref<FileTag[]>([])
 const selectedTagIds = ref<string[]>([])
 
-// Forms
 const moveForm = reactive({
   folderId: '',
+})
+
+const changeCategoryForm = reactive({
   category: '',
 })
 
@@ -230,43 +314,84 @@ const newTag = reactive({
   color: '#409EFF',
 })
 
-// Constants
 const folderTreeProps = {
   children: 'children',
   label: 'name',
   value: 'id',
 }
 
-const categories = [
-  { label: t('category.images'), value: 'images' },
-  { label: t('category.videos'), value: 'videos' },
-  { label: t('category.music'), value: 'music' },
-  { label: t('category.documents'), value: 'documents' },
-  { label: t('category.archives'), value: 'archives' },
-  { label: t('category.scripts'), value: 'scripts' },
-  { label: t('category.styles'), value: 'styles' },
-  { label: t('category.fonts'), value: 'fonts' },
-]
+const categories = computed(() => [
+  { label: t('file.categories.images'), value: FileCategory.IMAGE },
+  { label: t('file.categories.documents'), value: FileCategory.DOCUMENT },
+  { label: t('file.categories.music'), value: FileCategory.MUSIC },
+  { label: t('file.categories.videos'), value: FileCategory.VIDEO },
+  { label: t('file.categories.archives'), value: FileCategory.ARCHIVE },
+])
 
-const accessLevels = [
-  { label: t('access.public'), value: 'public' },
-  { label: t('access.private'), value: 'private' },
-  { label: t('access.protected'), value: 'protected' },
-]
+const getCategoryIcon = (category: string) => {
+  const iconMap: Record<string, any> = {
+    images: Picture,
+    documents: Document,
+    music: Headset,
+    videos: VideoPlay,
+    archives: FolderOpened,
+    scripts: Document,
+    styles: Document,
+    fonts: Document,
+    temp: Document,
+  }
+  return iconMap[category] || Document
+}
 
-// Methods
+const accessLevels = computed(() => [
+  { label: t('file.accessLevels.public'), value: 'public' },
+  { label: t('file.accessLevels.private'), value: 'private' },
+  { label: t('file.accessLevels.protected'), value: 'protected' },
+])
+
+// 初始化批量移动表单
+const initializeBatchMoveForm = () => {
+  // 对于批量操作，我们需要找到共同的文件夹
+  const folders = new Set(props.selectedFiles.map(file => file.folderId || 'all'))
+
+  // 如果所有文件都在同一个文件夹，设置为默认值
+  if (folders.size === 1) {
+    moveForm.folderId = Array.from(folders)[0]
+  } else {
+    // 如果文件在不同文件夹，默认选择 'all'
+    moveForm.folderId = 'all'
+  }
+}
+
+// 初始化批量更改分类表单
+const initializeBatchChangeCategoryForm = () => {
+  // 对于批量操作，我们需要找到共同的分类
+  const categories = new Set(props.selectedFiles.map(file => file.category))
+
+  // 如果所有文件都是同一个分类，设置为默认值
+  if (categories.size === 1) {
+    changeCategoryForm.category = Array.from(categories)[0]
+  } else {
+    // 如果文件有不同分类，不设置默认值
+    changeCategoryForm.category = ''
+  }
+}
+
 const handleCommand = (command: string) => {
   switch (command) {
     case 'download':
       handleBatchDownload()
       break
     case 'move':
-      currentOperation.value = 'move'
+      initializeBatchMoveForm()
       showMoveDialog.value = true
       break
+    case 'changeCategory':
+      initializeBatchChangeCategoryForm()
+      showChangeCategoryDialog.value = true
+      break
     case 'copy':
-      currentOperation.value = 'copy'
-      showMoveDialog.value = true
+      ElMessage.info('复制功能暂未实现')
       break
     case 'addTags':
       showTagsDialog.value = true
@@ -282,11 +407,6 @@ const handleCommand = (command: string) => {
 
 const handleBatchDownload = async () => {
   try {
-    // Create a zip file with selected files
-    const fileIds = props.selectedFiles.map(file => file.id)
-
-    // This would need to be implemented in the backend
-    // For now, download files individually
     for (const file of props.selectedFiles) {
       await FilesApi.downloadFile(file.id, file.filename)
     }
@@ -303,29 +423,72 @@ const handleMoveConfirm = async () => {
   try {
     processing.value = true
 
-    const operation: BatchOperation = {
-      action: currentOperation.value,
-      fileIds: props.selectedFiles.map(file => file.id),
-      targetCategory: moveForm.category as FileCategory,
+    const targetFolderId = moveForm.folderId
+
+    // 检查是否有任何更改
+    const filesToMove = props.selectedFiles.filter(
+      file => targetFolderId && targetFolderId !== (file.folderId || 'all')
+    )
+
+    if (filesToMove.length === 0) {
+      ElMessage.info('没有文件需要移动')
+      showMoveDialog.value = false
+      return
     }
 
-    if (moveForm.folderId) {
-      await FilesApi.moveFilesToFolder(operation.fileIds, moveForm.folderId)
-    } else {
-      await FilesApi.batchOperation(operation)
-    }
+    // 执行文件夹移动操作
+    await FilesApi.moveFilesToFolder(
+      filesToMove.map(f => f.id),
+      targetFolderId
+    )
 
     showMoveDialog.value = false
     moveForm.folderId = ''
-    moveForm.category = ''
 
-    ElMessage.success(
-      t(`batch.${currentOperation.value}Success`, { count: props.selectedFiles.length })
-    )
-    emit('operation-complete', currentOperation.value, props.selectedFiles.length)
+    emit('operation-complete', 'move', filesToMove.length)
   } catch (error) {
-    console.error(`Failed to ${currentOperation.value} files:`, error)
-    ElMessage.error(t(`batch.${currentOperation.value}Error`))
+    console.error('Failed to move files:', error)
+    ElMessage.error('移动失败')
+  } finally {
+    processing.value = false
+  }
+}
+
+const handleChangeCategoryConfirm = async () => {
+  try {
+    processing.value = true
+
+    const targetCategory = changeCategoryForm.category
+
+    if (!targetCategory) {
+      ElMessage.error('请选择分类')
+      return
+    }
+
+    // 检查是否有任何更改
+    const filesToUpdate = props.selectedFiles.filter(file => targetCategory !== file.category)
+
+    if (filesToUpdate.length === 0) {
+      ElMessage.info('没有文件需要更改分类')
+      showChangeCategoryDialog.value = false
+      return
+    }
+
+    // 执行分类标记更新操作
+    for (const file of filesToUpdate) {
+      const updates = {
+        category: targetCategory as FileCategory,
+      }
+      await FilesApi.updateFile(file.id, updates)
+    }
+
+    showChangeCategoryDialog.value = false
+    changeCategoryForm.category = ''
+
+    emit('operation-complete', 'changeCategory', filesToUpdate.length)
+  } catch (error) {
+    console.error('Failed to change category:', error)
+    ElMessage.error('更改分类失败')
   } finally {
     processing.value = false
   }
@@ -357,7 +520,7 @@ const handleAccessConfirm = async () => {
     processing.value = true
 
     const operation: BatchOperation = {
-      action: 'move', // Using move action to update access level
+      action: 'move',
       fileIds: props.selectedFiles.map(file => file.id),
       targetAccessLevel: accessForm.accessLevel as FileAccessLevel,
     }
@@ -445,16 +608,14 @@ const loadTags = async () => {
   }
 }
 
-// Lifecycle
 onMounted(() => {
   loadFolders()
   loadTags()
 })
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
 .batch-operations {
-  .move-dialog-content,
   .tags-dialog-content,
   .access-dialog-content {
     padding: 16px 0;
@@ -484,6 +645,246 @@ onMounted(() => {
     border-top: 1px solid var(--el-border-color-light);
     padding-top: 16px;
   }
+}
+
+/* 批量移动对话框样式 */
+.batch-move-dialog {
+  :deep(.el-dialog) {
+    border-radius: 12px;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.1);
+  }
+
+  :deep(.el-dialog__header) {
+    padding: 24px 24px 16px;
+    border-bottom: 1px solid var(--el-border-color-lighter);
+  }
+
+  :deep(.el-dialog__title) {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--el-text-color-primary);
+  }
+
+  :deep(.el-dialog__body) {
+    padding: 24px;
+  }
+
+  :deep(.el-dialog__footer) {
+    padding: 16px 24px 24px;
+    border-top: 1px solid var(--el-border-color-lighter);
+  }
+}
+
+/* 批量更改分类对话框样式 */
+.batch-change-category-dialog {
+  :deep(.el-dialog) {
+    border-radius: 12px;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.1);
+  }
+
+  :deep(.el-dialog__header) {
+    padding: 24px 24px 16px;
+    border-bottom: 1px solid var(--el-border-color-lighter);
+  }
+
+  :deep(.el-dialog__title) {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--el-text-color-primary);
+  }
+
+  :deep(.el-dialog__body) {
+    padding: 24px;
+    max-height: 60vh;
+    overflow-y: auto;
+  }
+
+  :deep(.el-dialog__footer) {
+    padding: 16px 24px 24px;
+    border-top: 1px solid var(--el-border-color-lighter);
+  }
+}
+
+.move-dialog-content,
+.change-category-dialog-content {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding-bottom: 20px;
+}
+
+.batch-info-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  background: linear-gradient(
+    135deg,
+    var(--el-color-success-light-9) 0%,
+    var(--el-color-success-light-8) 100%
+  );
+  border-radius: 8px;
+  border: 1px solid var(--el-color-success-light-7);
+
+  .batch-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    background: var(--el-color-success-light-8);
+    border-radius: 8px;
+    color: var(--el-color-success);
+  }
+
+  .batch-details {
+    flex: 1;
+    min-width: 0;
+
+    .batch-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--el-text-color-primary);
+      margin-bottom: 4px;
+    }
+
+    .batch-meta {
+      font-size: 13px;
+      color: var(--el-text-color-secondary);
+
+      strong {
+        color: var(--el-color-success);
+        font-weight: 600;
+      }
+    }
+  }
+}
+
+.operation-description {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  background: var(--el-color-info-light-9);
+  border-radius: 6px;
+  font-size: 14px;
+  color: var(--el-color-info-dark-2);
+
+  .info-icon {
+    color: var(--el-color-info);
+    flex-shrink: 0;
+  }
+}
+
+.move-form,
+.category-form {
+  .el-form-item {
+    margin-bottom: 0;
+  }
+
+  .el-form-item__label {
+    font-weight: 500;
+    color: var(--el-text-color-primary);
+  }
+
+  .folder-selector {
+    width: 100%;
+  }
+}
+
+.category-form {
+  .el-form-item__label {
+    margin-bottom: 12px;
+  }
+}
+
+.category-grid {
+  width: 100%;
+}
+
+.category-radio-group {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+
+  :deep(.el-radio) {
+    margin: 0;
+    width: 100%;
+
+    .el-radio__input {
+      display: none;
+    }
+
+    .el-radio__label {
+      padding: 0;
+      width: 100%;
+    }
+
+    .category-option {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 12px;
+      padding: 12px 16px;
+      border: 2px solid var(--el-border-color-light);
+      border-radius: 8px;
+      background: var(--el-bg-color);
+      cursor: pointer;
+      transition: all 0.3s ease;
+      min-height: 50px;
+      width: 100%;
+
+      &:hover {
+        border-color: var(--el-color-primary-light-5);
+        background: var(--el-color-primary-light-9);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      }
+
+      .category-icon {
+        font-size: 20px;
+        color: var(--el-text-color-secondary);
+        transition: color 0.3s ease;
+        line-height: 1;
+        flex-shrink: 0;
+      }
+
+      .category-label {
+        font-size: 14px;
+        font-weight: 500;
+        color: var(--el-text-color-regular);
+        text-align: left;
+        transition: color 0.3s ease;
+        line-height: 1.2;
+        margin: 0;
+        flex: 1;
+      }
+    }
+
+    /* 选中状态样式 */
+    &.is-checked .category-option {
+      border-color: var(--el-color-primary);
+      background: var(--el-color-primary-light-9);
+      box-shadow: 0 0 0 1px var(--el-color-primary-light-7);
+
+      .category-icon {
+        color: var(--el-color-primary);
+      }
+
+      .category-label {
+        color: var(--el-color-primary);
+        font-weight: 600;
+      }
+    }
+  }
+}
+
+.dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
 }
 
 :deep(.el-checkbox) {

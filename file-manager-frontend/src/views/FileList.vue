@@ -224,6 +224,9 @@
                         <el-dropdown-item command="move" :icon="FolderOpened">
                           移动
                         </el-dropdown-item>
+                        <el-dropdown-item command="changeCategory" :icon="Collection">
+                          更改分类
+                        </el-dropdown-item>
                         <el-dropdown-item command="properties" :icon="InfoFilled">
                           属性
                         </el-dropdown-item>
@@ -311,7 +314,7 @@
     <!-- 文件预览对话框 -->
     <FilePreview
       v-model="showPreviewDialog"
-      :file-info="selectedFile"
+      :file-info="selectedFile || undefined"
       @file-updated="handleFileUpdated"
     />
 
@@ -329,15 +332,40 @@
     <RenameDialog v-model="showRenameDialog" :file="selectedFile" @renamed="handleFileRenamed" />
 
     <!-- 移动文件对话框 -->
-    <el-dialog v-model="showMoveDialog" :title="$t('file.move')" width="500px">
+    <el-dialog
+      v-model="showMoveDialog"
+      title="移动文件"
+      width="520px"
+      class="move-file-dialog"
+      :close-on-click-modal="false"
+    >
       <div class="move-dialog-content">
-        <p>{{ $t('batch.singleMoveDescription') }}</p>
-        <p>
-          <strong>{{ selectedFile?.originalName }}</strong>
-        </p>
+        <!-- 文件信息卡片 -->
+        <div class="single-file-move-card">
+          <div class="file-icon">
+            <el-icon size="24">
+              <component :is="getCategoryIcon(selectedFile?.category || '')" />
+            </el-icon>
+          </div>
+          <div class="file-details">
+            <div class="file-title">移动文件</div>
+            <div class="file-meta">
+              <strong>{{ selectedFile?.originalName }}</strong>
+              • {{ configStore.formatFileSize(selectedFile?.size || 0) }} •
+              {{ formatTime(selectedFile?.uploadedAt || '') }}
+            </div>
+          </div>
+        </div>
 
-        <el-form :model="moveForm" label-width="100px">
-          <el-form-item :label="$t('batch.targetFolder')">
+        <!-- 操作说明 -->
+        <div class="operation-description">
+          <el-icon class="info-icon"><InfoFilled /></el-icon>
+          <span>选择文件的目标文件夹</span>
+        </div>
+
+        <!-- 文件夹选择 -->
+        <el-form :model="moveForm" class="move-form">
+          <el-form-item label="目标文件夹">
             <el-tree-select
               v-model="moveForm.folderId"
               :data="foldersStore.folderTree"
@@ -345,33 +373,97 @@
               :placeholder="$t('batch.selectFolder')"
               clearable
               check-strictly
+              class="folder-selector"
             />
-          </el-form-item>
-
-          <el-form-item :label="$t('batch.targetCategory')">
-            <el-select
-              v-model="moveForm.category"
-              :placeholder="$t('batch.selectCategory')"
-              clearable
-            >
-              <el-option
-                v-for="category in categories"
-                :key="category.value"
-                :label="category.label"
-                :value="category.value"
-              />
-            </el-select>
           </el-form-item>
         </el-form>
       </div>
 
       <template #footer>
-        <el-button @click="showMoveDialog = false">
-          {{ $t('common.cancel') }}
-        </el-button>
-        <el-button type="primary" :loading="processing" @click="handleMoveConfirm">
-          {{ $t('batch.move') }}
-        </el-button>
+        <div class="dialog-footer">
+          <el-button @click="showMoveDialog = false" size="default">
+            {{ $t('common.cancel') }}
+          </el-button>
+          <el-button type="primary" :loading="processing" @click="handleMoveConfirm" size="default">
+            <el-icon v-if="!processing"><FolderOpened /></el-icon>
+            确认移动
+          </el-button>
+        </div>
+      </template>
+    </el-dialog>
+
+    <!-- 更改分类对话框 -->
+    <el-dialog
+      v-model="showChangeCategoryDialog"
+      title="更改分类"
+      width="520px"
+      class="change-category-dialog"
+      :close-on-click-modal="false"
+    >
+      <div class="change-category-dialog-content">
+        <!-- 文件信息卡片 -->
+        <div class="file-info-card">
+          <div class="file-icon">
+            <el-icon size="24">
+              <component :is="getCategoryIcon(selectedFile?.category || '')" />
+            </el-icon>
+          </div>
+          <div class="file-details">
+            <div class="file-name">更改文件分类</div>
+            <div class="file-meta">
+              <strong>{{ selectedFile?.originalName }}</strong>
+              • {{ configStore.formatFileSize(selectedFile?.size || 0) }} • 当前分类：
+              <el-tag size="small">{{ getCategoryLabel(selectedFile?.category || '') }}</el-tag>
+            </div>
+          </div>
+        </div>
+
+        <!-- 操作说明 -->
+        <div class="operation-description">
+          <el-icon class="info-icon"><InfoFilled /></el-icon>
+          <span>为文件设置新的分类标记</span>
+        </div>
+
+        <!-- 分类选择 -->
+        <el-form :model="changeCategoryForm" class="category-form">
+          <el-form-item label="选择分类">
+            <div class="category-grid">
+              <el-radio-group v-model="changeCategoryForm.category" class="category-radio-group">
+                <el-radio
+                  v-for="category in categories"
+                  :key="category.value"
+                  :value="category.value"
+                  :label="category.value"
+                  class="category-radio"
+                >
+                  <div class="category-option">
+                    <el-icon class="category-icon">
+                      <component :is="getCategoryIcon(category.value)" />
+                    </el-icon>
+                    <span class="category-label">{{ category.label }}</span>
+                  </div>
+                </el-radio>
+              </el-radio-group>
+            </div>
+          </el-form-item>
+        </el-form>
+      </div>
+
+      <template #footer>
+        <div class="dialog-footer">
+          <el-button @click="showChangeCategoryDialog = false" size="default">
+            {{ $t('common.cancel') }}
+          </el-button>
+          <el-button
+            type="primary"
+            :loading="processing"
+            @click="handleChangeCategoryConfirm"
+            size="default"
+          >
+            <el-icon v-if="!processing"><Edit /></el-icon>
+            确认更改
+          </el-button>
+        </div>
       </template>
     </el-dialog>
 
@@ -405,6 +497,7 @@ import {
   FolderOpened,
   Connection,
   ArrowDown,
+  Collection,
 } from '@element-plus/icons-vue'
 import dayjs from 'dayjs'
 import { useConfigStore } from '@/stores/config'
@@ -441,6 +534,7 @@ const showPropertiesDialog = ref(false)
 const showRenameDialog = ref(false)
 const showTrashManager = ref(false)
 const showMoveDialog = ref(false)
+const showChangeCategoryDialog = ref(false)
 const processing = ref(false)
 
 // 同步状态
@@ -449,6 +543,10 @@ const syncLoading = ref(false)
 // 移动表单
 const moveForm = reactive({
   folderId: '',
+})
+
+// 更改分类表单
+const changeCategoryForm = reactive({
   category: '',
 })
 
@@ -472,6 +570,21 @@ const categories = computed(() => [
 const getCategoryLabel = (category: string) => {
   const item = categories.value.find(c => c.value === category)
   return item?.label || category
+}
+
+const getCategoryIcon = (category: string) => {
+  const iconMap: Record<string, any> = {
+    images: Picture,
+    documents: Document,
+    music: Headset,
+    videos: VideoPlay,
+    archives: FolderOpened,
+    scripts: Document,
+    styles: Document,
+    fonts: Document,
+    temp: Document,
+  }
+  return iconMap[category] || Document
 }
 
 const getAccessLevelLabel = (level: string) => {
@@ -743,7 +856,14 @@ const handleFileAction = (command: string, file: FileInfo) => {
       showRenameDialog.value = true
       break
     case 'move':
+      // 初始化移动表单，设置默认值
+      initializeMoveForm(file)
       showMoveDialog.value = true
+      break
+    case 'changeCategory':
+      // 初始化更改分类表单，设置默认值
+      initializeChangeCategoryForm(file)
+      showChangeCategoryDialog.value = true
       break
     case 'properties':
       showPropertiesDialog.value = true
@@ -757,6 +877,57 @@ const handleFileAction = (command: string, file: FileInfo) => {
     case 'delete':
       handleDeleteFile(file)
       break
+  }
+}
+
+// 初始化移动表单
+const initializeMoveForm = (file: FileInfo) => {
+  // 设置目标文件夹为当前文件所属文件夹
+  moveForm.folderId = file.folderId || currentFolderId.value || 'all'
+}
+
+// 初始化更改分类表单
+const initializeChangeCategoryForm = (file: FileInfo) => {
+  // 设置当前文件的分类
+  changeCategoryForm.category = file.category
+}
+
+const handleChangeCategoryConfirm = async () => {
+  try {
+    processing.value = true
+
+    if (!selectedFile.value) {
+      ElMessage.error('请选择要更改分类的文件')
+      return
+    }
+
+    const currentFile = selectedFile.value
+    const targetCategory = changeCategoryForm.category
+
+    // 检查是否有实际的更改
+    if (targetCategory === currentFile.category) {
+      ElMessage.info('分类没有更改')
+      showChangeCategoryDialog.value = false
+      return
+    }
+
+    // 更新分类标记（不移动物理文件）
+    const updates = {
+      category: targetCategory as FileCategory,
+    }
+    await FilesApi.updateFile(currentFile.id, updates)
+
+    showChangeCategoryDialog.value = false
+    changeCategoryForm.category = ''
+
+    ElMessage.success('文件分类更新成功')
+    // 刷新文件列表
+    await filesStore.refreshFiles()
+  } catch (error) {
+    console.error('Failed to change category:', error)
+    ElMessage.error('更改分类失败')
+  } finally {
+    processing.value = false
   }
 }
 
@@ -794,23 +965,21 @@ const handleMoveConfirm = async () => {
       return
     }
 
-    if (moveForm.folderId) {
-      await FilesApi.moveFilesToFolder([selectedFile.value.id], moveForm.folderId)
-    } else if (moveForm.category) {
-      const operation = {
-        action: 'move' as const,
-        fileIds: [selectedFile.value.id],
-        targetCategory: moveForm.category as FileCategory,
-      }
-      await FilesApi.batchOperation(operation)
-    } else {
-      ElMessage.error('请选择目标文件夹或分类')
+    const currentFile = selectedFile.value
+    const targetFolderId = moveForm.folderId
+
+    // 检查是否有实际的更改
+    if (targetFolderId === (currentFile.folderId || currentFolderId.value || 'all')) {
+      ElMessage.info('文件夹没有更改')
+      showMoveDialog.value = false
       return
     }
 
+    // 执行文件夹移动操作
+    await FilesApi.moveFilesToFolder([currentFile.id], targetFolderId)
+
     showMoveDialog.value = false
     moveForm.folderId = ''
-    moveForm.category = ''
 
     ElMessage.success('文件移动成功')
     // 先刷新文件列表，再刷新文件夹统计
@@ -818,7 +987,7 @@ const handleMoveConfirm = async () => {
     await foldersStore.refreshFolders()
   } catch (error) {
     console.error('Failed to move file:', error)
-    ElMessage.error('文件移动失败')
+    ElMessage.error('移动失败')
   } finally {
     processing.value = false
   }
@@ -1226,25 +1395,309 @@ onMounted(async () => {
   border-top: 1px solid var(--el-border-color);
 }
 
-.move-dialog-content {
-  padding: 16px 0;
-
-  p {
-    margin-bottom: 12px;
-    color: var(--el-text-color-regular);
-
-    &:first-child {
-      margin-bottom: 8px;
-    }
-
-    strong {
-      color: var(--el-text-color-primary);
-      font-weight: 600;
-    }
+/* 移动文件对话框样式 */
+.move-file-dialog {
+  :deep(.el-dialog) {
+    border-radius: 12px;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.1);
   }
 
-  .el-form {
-    margin-top: 20px;
+  :deep(.el-dialog__header) {
+    padding: 24px 24px 16px;
+    border-bottom: 1px solid var(--el-border-color-lighter);
+  }
+
+  :deep(.el-dialog__title) {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--el-text-color-primary);
+  }
+
+  :deep(.el-dialog__body) {
+    padding: 24px;
+  }
+
+  :deep(.el-dialog__footer) {
+    padding: 16px 24px 24px;
+    border-top: 1px solid var(--el-border-color-lighter);
+  }
+}
+
+.move-dialog-content {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.file-info-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  background: linear-gradient(
+    135deg,
+    var(--el-color-primary-light-9) 0%,
+    var(--el-color-primary-light-8) 100%
+  );
+  border-radius: 8px;
+  border: 1px solid var(--el-color-primary-light-7);
+
+  .file-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    background: var(--el-color-primary-light-8);
+    border-radius: 8px;
+    color: var(--el-color-primary);
+  }
+
+  .file-details {
+    flex: 1;
+    min-width: 0;
+
+    .file-name {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--el-text-color-primary);
+      margin-bottom: 4px;
+      word-break: break-all;
+    }
+
+    .file-meta {
+      font-size: 13px;
+      color: var(--el-text-color-secondary);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+
+      strong {
+        color: var(--el-color-primary);
+        font-weight: 600;
+      }
+    }
+  }
+}
+
+.single-file-move-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  background: linear-gradient(
+    135deg,
+    var(--el-color-primary-light-9) 0%,
+    var(--el-color-primary-light-8) 100%
+  );
+  border-radius: 8px;
+  border: 1px solid var(--el-color-primary-light-7);
+
+  .file-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    background: var(--el-color-primary-light-8);
+    border-radius: 8px;
+    color: var(--el-color-primary);
+  }
+
+  .file-details {
+    flex: 1;
+    min-width: 0;
+
+    .file-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--el-text-color-primary);
+      margin-bottom: 4px;
+    }
+
+    .file-meta {
+      font-size: 13px;
+      color: var(--el-text-color-secondary);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+
+      strong {
+        color: var(--el-color-primary);
+        font-weight: 600;
+      }
+    }
+  }
+}
+
+.operation-description {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  background: var(--el-color-info-light-9);
+  border-radius: 6px;
+  font-size: 14px;
+  color: var(--el-color-info-dark-2);
+
+  .info-icon {
+    color: var(--el-color-info);
+    flex-shrink: 0;
+  }
+}
+
+.move-form {
+  .el-form-item {
+    margin-bottom: 0;
+  }
+
+  .el-form-item__label {
+    font-weight: 500;
+    color: var(--el-text-color-primary);
+  }
+
+  .folder-selector {
+    width: 100%;
+  }
+}
+
+.dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+/* 更改分类对话框样式 */
+.change-category-dialog {
+  :deep(.el-dialog) {
+    border-radius: 12px;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.1);
+  }
+
+  :deep(.el-dialog__header) {
+    padding: 24px 24px 16px;
+    border-bottom: 1px solid var(--el-border-color-lighter);
+  }
+
+  :deep(.el-dialog__title) {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--el-text-color-primary);
+  }
+
+  :deep(.el-dialog__body) {
+    padding: 24px;
+    max-height: 60vh;
+    overflow-y: auto;
+  }
+
+  :deep(.el-dialog__footer) {
+    padding: 16px 24px 24px;
+    border-top: 1px solid var(--el-border-color-lighter);
+  }
+}
+
+.change-category-dialog-content {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding-bottom: 20px;
+}
+
+.category-form {
+  .el-form-item {
+    margin-bottom: 0;
+  }
+
+  .el-form-item__label {
+    font-weight: 500;
+    color: var(--el-text-color-primary);
+    margin-bottom: 12px;
+  }
+}
+
+.category-grid {
+  width: 100%;
+}
+
+.category-radio-group {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+
+  :deep(.el-radio) {
+    margin: 0;
+    width: 100%;
+
+    .el-radio__input {
+      display: none;
+    }
+
+    .el-radio__label {
+      padding: 0;
+      width: 100%;
+    }
+
+    .category-option {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 12px;
+      padding: 12px 16px;
+      border: 2px solid var(--el-border-color-light);
+      border-radius: 8px;
+      background: var(--el-bg-color);
+      cursor: pointer;
+      transition: all 0.3s ease;
+      min-height: 50px;
+      width: 100%;
+
+      &:hover {
+        border-color: var(--el-color-primary-light-5);
+        background: var(--el-color-primary-light-9);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      }
+
+      .category-icon {
+        font-size: 20px;
+        color: var(--el-text-color-secondary);
+        transition: color 0.3s ease;
+        line-height: 1;
+        flex-shrink: 0;
+      }
+
+      .category-label {
+        font-size: 14px;
+        font-weight: 500;
+        color: var(--el-text-color-regular);
+        text-align: left;
+        transition: color 0.3s ease;
+        line-height: 1.2;
+        margin: 0;
+        flex: 1;
+      }
+    }
+
+    /* 选中状态样式 */
+    &.is-checked .category-option {
+      border-color: var(--el-color-primary);
+      background: var(--el-color-primary-light-9);
+      box-shadow: 0 0 0 1px var(--el-color-primary-light-7);
+
+      .category-icon {
+        color: var(--el-color-primary);
+      }
+
+      .category-label {
+        color: var(--el-color-primary);
+        font-weight: 600;
+      }
+    }
   }
 }
 </style>

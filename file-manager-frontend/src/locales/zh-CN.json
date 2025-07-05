@@ -273,6 +273,8 @@
     "downloadError": "批量下载失败",
     "moveSuccess": "成功移动 {count} 个文件",
     "moveError": "移动文件失败",
+    "changeCategorySuccess": "成功更改 {count} 个文件的分类",
+    "changeCategoryError": "更改分类失败",
     "copySuccess": "成功复制 {count} 个文件",
     "copyError": "复制文件失败",
     "tagsSuccess": "成功为 {count} 个文件添加标签",
