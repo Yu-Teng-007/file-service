@@ -199,16 +199,31 @@ export class FileValidationService {
       return
     }
 
-    // Office文档验证
+    // 现代Office文档验证 (docx, xlsx, pptx)
     if (this.checkSignature(buffer, [0x50, 0x4b, 0x03, 0x04])) {
-      // ZIP signature for modern Office
+      // ZIP signature for modern Office and OpenDocument
       return
     }
 
-    // 旧版Office文档
+    // 旧版Office文档验证 (doc, xls, ppt)
     if (this.checkSignature(buffer, [0xd0, 0xcf, 0x11, 0xe0])) {
       // OLE signature
       return
+    }
+
+    // RTF文件验证
+    if (this.checkSignature(buffer, [0x7b, 0x5c, 0x72, 0x74, 0x66])) {
+      // {\rtf
+      return
+    }
+
+    // OpenDocument格式验证 (odt, ods, odp)
+    if (this.checkSignature(buffer, [0x50, 0x4b]) && buffer.length > 30) {
+      // 检查是否包含OpenDocument特征
+      const content = buffer.toString('utf8', 0, Math.min(buffer.length, 1000))
+      if (content.includes('mimetypeapplication/vnd.oasis.opendocument')) {
+        return
+      }
     }
 
     // 纯文本文件

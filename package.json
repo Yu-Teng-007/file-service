@@ -138,7 +138,7 @@
       }
     },
     "setupFilesAfterEnv": [
-      "<rootDir>/test-setup.ts"
+      "<rootDir>/test/setup.ts"
     ],
     "silent": false,
     "moduleNameMapper": {

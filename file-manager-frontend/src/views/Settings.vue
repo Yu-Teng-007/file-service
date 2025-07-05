@@ -242,6 +242,25 @@ const fileTypeOptions = [
   { label: '图片文件 (image/*)', value: 'image/*' },
   { label: '文档文件 (text/*)', value: 'text/*' },
   { label: 'PDF文件', value: 'application/pdf' },
+  { label: 'Word文档 (.doc)', value: 'application/msword' },
+  {
+    label: 'Word文档 (.docx)',
+    value: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  },
+  { label: 'Excel表格 (.xls)', value: 'application/vnd.ms-excel' },
+  {
+    label: 'Excel表格 (.xlsx)',
+    value: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  },
+  { label: 'PowerPoint演示 (.ppt)', value: 'application/vnd.ms-powerpoint' },
+  {
+    label: 'PowerPoint演示 (.pptx)',
+    value: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  },
+  { label: '富文本文件 (.rtf)', value: 'application/rtf' },
+  { label: 'OpenDocument文本 (.odt)', value: 'application/vnd.oasis.opendocument.text' },
+  { label: 'OpenDocument表格 (.ods)', value: 'application/vnd.oasis.opendocument.spreadsheet' },
+  { label: 'OpenDocument演示 (.odp)', value: 'application/vnd.oasis.opendocument.presentation' },
   { label: '压缩文件', value: 'application/zip' },
   { label: '音频文件 (audio/*)', value: 'audio/*' },
   { label: '视频文件 (video/*)', value: 'video/*' },
@@ -322,7 +341,16 @@ const saveUploadConfig = async () => {
 
 const resetUploadConfig = () => {
   uploadForm.maxFileSize = 100
-  uploadForm.allowedTypes = ['*/*']
+  uploadForm.allowedTypes = [
+    'image/*',
+    'text/*',
+    'application/pdf',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'application/zip',
+    'audio/*',
+    'video/*',
+  ]
 }
 
 const handleThemeChange = (theme: string | number | boolean | undefined) => {

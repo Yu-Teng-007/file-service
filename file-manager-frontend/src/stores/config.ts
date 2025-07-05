@@ -12,8 +12,9 @@ export const useConfigStore = defineStore('config', () => {
       'image/*',
       'text/*',
       'application/pdf',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       'application/zip',
-      'application/x-zip-compressed',
       'audio/*',
       'video/*',
     ],
@@ -34,11 +35,11 @@ export const useConfigStore = defineStore('config', () => {
   // 格式化文件大小
   const formatFileSize = (bytes: number): string => {
     if (bytes === 0) return '0 B'
-    
+
     const k = 1024
     const sizes = ['B', 'KB', 'MB', 'GB', 'TB']
     const i = Math.floor(Math.log(bytes) / Math.log(k))
-    
+
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
   }
 
@@ -54,7 +55,7 @@ export const useConfigStore = defineStore('config', () => {
     config.value.apiBaseUrl = apiBaseUrl
     config.value.apiKey = apiKey
     saveToLocalStorage()
-    
+
     // 更新 API 客户端配置
     import('@/api/client').then(({ apiClient }) => {
       apiClient.updateConfig(apiBaseUrl, apiKey)
@@ -74,9 +75,10 @@ export const useConfigStore = defineStore('config', () => {
 
   const applyTheme = () => {
     const { theme } = config.value
-    const isDark = theme === 'dark' || 
+    const isDark =
+      theme === 'dark' ||
       (theme === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches)
-    
+
     document.documentElement.classList.toggle('dark', isDark)
   }
 
@@ -105,8 +107,9 @@ export const useConfigStore = defineStore('config', () => {
         'image/*',
         'text/*',
         'application/pdf',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         'application/zip',
-        'application/x-zip-compressed',
         'audio/*',
         'video/*',
       ],
@@ -121,7 +124,7 @@ export const useConfigStore = defineStore('config', () => {
   const init = () => {
     loadFromLocalStorage()
     applyTheme()
-    
+
     // 监听系统主题变化
     if (config.value.theme === 'auto') {
       const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
@@ -132,7 +135,7 @@ export const useConfigStore = defineStore('config', () => {
   return {
     // 状态
     config,
-    
+
     // 计算属性
     apiBaseUrl,
     apiKey,
@@ -142,7 +145,7 @@ export const useConfigStore = defineStore('config', () => {
     theme,
     language,
     maxFileSizeFormatted,
-    
+
     // 方法
     updateConfig,
     updateApiConfig,
