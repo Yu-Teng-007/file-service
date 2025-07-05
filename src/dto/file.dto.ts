@@ -207,6 +207,24 @@ export class FileSearchDto {
   @IsOptional()
   @IsString()
   sortOrder?: 'asc' | 'desc' = 'desc'
+
+  @ApiPropertyOptional({
+    description: '是否验证文件存在性 / Whether to validate file existence',
+    default: true,
+  })
+  @IsOptional()
+  @IsBoolean()
+  @Transform(({ value }) => value === 'true' || value === true)
+  validateExistence?: boolean = true
+
+  @ApiPropertyOptional({
+    description: '是否自动清理不存在的文件记录 / Whether to auto cleanup missing file records',
+    default: false,
+  })
+  @IsOptional()
+  @IsBoolean()
+  @Transform(({ value }) => value === 'true' || value === true)
+  autoCleanup?: boolean = false
 }
 
 /**

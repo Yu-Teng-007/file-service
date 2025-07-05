@@ -219,6 +219,90 @@ export class FilesController {
     }
   }
 
+  @Get('validate')
+  @ApiKeyAuth()
+  @ApiOperation({
+    summary: '验证文件完整性',
+    description: '检查文件完整性，返回不存在的文件列表但不删除记录',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: '文件验证完成',
+    schema: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean' },
+        message: { type: 'string' },
+        data: {
+          type: 'object',
+          properties: {
+            totalFiles: { type: 'number' },
+            missingFiles: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  id: { type: 'string' },
+                  originalName: { type: 'string' },
+                  path: { type: 'string' },
+                },
+              },
+            },
+            errors: { type: 'array', items: { type: 'string' } },
+          },
+        },
+      },
+    },
+  })
+  async validateFileIntegrity(): Promise<ApiResponseDto> {
+    const result = await this.filesService.validateFileIntegrity()
+    return {
+      success: true,
+      message: `文件验证完成，共检查 ${result.totalFiles} 个文件，发现 ${result.missingFiles.length} 个缺失文件`,
+      data: result,
+    }
+  }
+
+  @Post('sync')
+  @ApiKeyAuth()
+  @ApiOperation({
+    summary: '同步文件元数据',
+    description: '检查并清理指向不存在物理文件的元数据记录',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: '文件同步成功',
+    schema: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean' },
+        message: { type: 'string' },
+        data: {
+          type: 'object',
+          properties: {
+            totalFiles: { type: 'number' },
+            removedFiles: {
+              type: 'array',
+              items: { type: 'string' },
+            },
+            errors: {
+              type: 'array',
+              items: { type: 'string' },
+            },
+          },
+        },
+      },
+    },
+  })
+  async syncFileMetadata(): Promise<ApiResponseDto> {
+    const result = await this.filesService.syncFileMetadata()
+    return {
+      success: true,
+      message: `同步完成，共检查 ${result.totalFiles} 个文件，清理 ${result.removedFiles.length} 个无效记录`,
+      data: result,
+    }
+  }
+
   @Get(':id')
   @UseInterceptors(CacheInterceptor)
   @Cacheable('file:${id}', 1800, ['file-metadata'])

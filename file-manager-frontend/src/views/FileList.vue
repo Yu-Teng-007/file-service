@@ -82,6 +82,27 @@
             <el-button :icon="Refresh" :loading="filesStore.loading" @click="handleRefresh">
               刷新
             </el-button>
+
+            <!-- 同步文件 -->
+            <el-dropdown @command="handleSyncCommand">
+              <el-button :loading="syncLoading">
+                <el-icon><Connection /></el-icon>
+                同步
+                <el-icon class="el-icon--right"><ArrowDown /></el-icon>
+              </el-button>
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item command="validate">
+                    <el-icon><View /></el-icon>
+                    验证文件完整性
+                  </el-dropdown-item>
+                  <el-dropdown-item command="sync" divided>
+                    <el-icon><Refresh /></el-icon>
+                    同步并清理无效记录
+                  </el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
           </div>
 
           <div class="toolbar-right">
@@ -382,6 +403,8 @@ import {
   Download,
   MoreFilled,
   FolderOpened,
+  Connection,
+  ArrowDown,
 } from '@element-plus/icons-vue'
 import dayjs from 'dayjs'
 import { useConfigStore } from '@/stores/config'
@@ -419,6 +442,9 @@ const showRenameDialog = ref(false)
 const showTrashManager = ref(false)
 const showMoveDialog = ref(false)
 const processing = ref(false)
+
+// 同步状态
+const syncLoading = ref(false)
 
 // 移动表单
 const moveForm = reactive({
@@ -498,6 +524,103 @@ const handleCategoryChange = () => {
 
 const handleRefresh = () => {
   filesStore.refreshFiles()
+}
+
+// 同步相关方法
+const handleSyncCommand = async (command: string) => {
+  if (syncLoading.value) return
+
+  syncLoading.value = true
+  try {
+    if (command === 'validate') {
+      await handleValidateFiles()
+    } else if (command === 'sync') {
+      await handleSyncFiles()
+    }
+  } catch (error) {
+    console.error('同步操作失败:', error)
+    ElMessage.error('同步操作失败')
+  } finally {
+    syncLoading.value = false
+  }
+}
+
+const handleValidateFiles = async () => {
+  try {
+    const result = await FilesApi.validateFileIntegrity()
+
+    if (result.missingFiles.length === 0) {
+      ElMessage.success(`文件验证完成，所有 ${result.totalFiles} 个文件都存在`)
+    } else {
+      const missingFileNames = result.missingFiles.map(f => f.originalName).join(', ')
+      await ElMessageBox.alert(
+        `发现 ${result.missingFiles.length} 个缺失文件：\n${missingFileNames}`,
+        '文件完整性验证结果',
+        {
+          type: 'warning',
+          confirmButtonText: '确定',
+        }
+      )
+    }
+
+    if (result.errors.length > 0) {
+      console.warn('验证过程中的错误:', result.errors)
+    }
+  } catch (error) {
+    console.error('验证文件完整性失败:', error)
+    ElMessage.error('验证文件完整性失败')
+  }
+}
+
+const handleSyncFiles = async () => {
+  try {
+    await ElMessageBox.confirm(
+      '此操作将清理所有指向不存在文件的记录，确认继续吗？',
+      '同步文件确认',
+      {
+        type: 'warning',
+        confirmButtonText: '确认同步',
+        cancelButtonText: '取消',
+      }
+    )
+
+    const result = await FilesApi.syncFileMetadata()
+
+    if (result.removedFiles.length === 0) {
+      ElMessage.success(`同步完成，所有 ${result.totalFiles} 个文件记录都有效`)
+    } else {
+      const removedFileNames = result.removedFiles.join('\n')
+      await ElMessageBox.alert(
+        `同步完成，已清理 ${result.removedFiles.length} 个无效记录：\n${removedFileNames}`,
+        '文件同步结果',
+        {
+          type: 'success',
+          confirmButtonText: '确定',
+        }
+      )
+    }
+
+    if (result.errors.length > 0) {
+      console.warn('同步过程中的错误:', result.errors)
+    }
+
+    // 刷新文件列表和文件夹统计
+    await filesStore.refreshFiles()
+    await foldersStore.refreshFolders()
+
+    // 刷新文件夹统计信息
+    try {
+      await FilesApi.refreshFolderStats()
+      console.log('文件夹统计信息已刷新')
+    } catch (error) {
+      console.warn('刷新文件夹统计信息失败:', error)
+    }
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('同步文件失败:', error)
+      ElMessage.error('同步文件失败')
+    }
+  }
 }
 
 const handleSelectionChange = (selection: FileInfo[]) => {

@@ -490,6 +490,84 @@ export class FoldersService {
     }
   }
 
+  /**
+   * 刷新指定文件夹的统计信息
+   */
+  async refreshFolderStats(folderIds: string[]): Promise<void> {
+    try {
+      const folders = await this.loadFolders()
+      let hasChanges = false
+
+      for (const folderId of folderIds) {
+        const folder = folders.find(f => f.id === folderId)
+        if (folder) {
+          const stats = await this.calculateFolderStats(folderId)
+
+          // 只有当统计信息发生变化时才更新
+          if (folder.fileCount !== stats.fileCount || folder.totalSize !== stats.totalSize) {
+            folder.fileCount = stats.fileCount
+            folder.totalSize = stats.totalSize
+            folder.updatedAt = new Date().toISOString()
+            hasChanges = true
+
+            console.log(
+              `更新文件夹统计: ${folder.name} - ${stats.fileCount} 个文件, ${stats.totalSize} 字节`
+            )
+          }
+        }
+      }
+
+      // 如果有变化，保存文件夹数据
+      if (hasChanges) {
+        await this.saveFolders(folders)
+        console.log(`已更新 ${folderIds.length} 个文件夹的统计信息`)
+      }
+    } catch (error) {
+      console.error('刷新文件夹统计信息失败:', error)
+      throw error
+    }
+  }
+
+  /**
+   * 刷新所有文件夹的统计信息
+   */
+  async refreshAllFolderStats(): Promise<void> {
+    try {
+      const folders = await this.loadFolders()
+      let hasChanges = false
+
+      for (const folder of folders) {
+        // 跳过系统文件夹
+        if (folder.id === 'all') {
+          const stats = await this.calculateAllFilesStats()
+          if (folder.fileCount !== stats.fileCount || folder.totalSize !== stats.totalSize) {
+            folder.fileCount = stats.fileCount
+            folder.totalSize = stats.totalSize
+            folder.updatedAt = new Date().toISOString()
+            hasChanges = true
+          }
+        } else {
+          const stats = await this.calculateFolderStats(folder.id)
+          if (folder.fileCount !== stats.fileCount || folder.totalSize !== stats.totalSize) {
+            folder.fileCount = stats.fileCount
+            folder.totalSize = stats.totalSize
+            folder.updatedAt = new Date().toISOString()
+            hasChanges = true
+          }
+        }
+      }
+
+      // 如果有变化，保存文件夹数据
+      if (hasChanges) {
+        await this.saveFolders(folders)
+        console.log('已刷新所有文件夹的统计信息')
+      }
+    } catch (error) {
+      console.error('刷新所有文件夹统计信息失败:', error)
+      throw error
+    }
+  }
+
   async moveFilesToFolder(fileIds: string[], folderId: string): Promise<void> {
     // 验证文件夹是否存在
     const folders = await this.loadFolders()

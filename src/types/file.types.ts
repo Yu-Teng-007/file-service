@@ -71,6 +71,8 @@ export interface FileSearchQuery {
   limit?: number
   sortBy?: 'name' | 'size' | 'date' | 'category'
   sortOrder?: 'asc' | 'desc'
+  validateExistence?: boolean // 是否验证文件存在性，默认为 true
+  autoCleanup?: boolean // 是否自动清理不存在的文件记录，默认为 false
 }
 
 export interface FileOperationResult {

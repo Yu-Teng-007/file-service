@@ -438,6 +438,54 @@ export class FilesApi {
     await apiClient.delete<ApiResponse>('/files/trash/empty')
   }
 
+  // ==================== 文件同步 API ====================
+
+  /**
+   * 同步文件元数据
+   * 检查并清理指向不存在物理文件的元数据记录
+   */
+  static async syncFileMetadata(): Promise<{
+    totalFiles: number
+    removedFiles: string[]
+    errors: string[]
+  }> {
+    const response = await apiClient.post<
+      ApiResponse<{
+        totalFiles: number
+        removedFiles: string[]
+        errors: string[]
+      }>
+    >('/files/sync')
+    return response.data!
+  }
+
+  /**
+   * 验证文件完整性
+   * 检查文件完整性，返回不存在的文件列表但不删除记录
+   */
+  static async validateFileIntegrity(): Promise<{
+    totalFiles: number
+    missingFiles: Array<{
+      id: string
+      originalName: string
+      path: string
+    }>
+    errors: string[]
+  }> {
+    const response = await apiClient.get<
+      ApiResponse<{
+        totalFiles: number
+        missingFiles: Array<{
+          id: string
+          originalName: string
+          path: string
+        }>
+        errors: string[]
+      }>
+    >('/files/validate')
+    return response.data!
+  }
+
   // ==================== 标签管理 API ====================
 
   /**

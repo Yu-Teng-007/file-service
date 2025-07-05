@@ -167,6 +167,8 @@ export class FilesService {
       limit: searchDto.limit,
       sortBy: searchDto.sortBy,
       sortOrder: searchDto.sortOrder,
+      validateExistence: searchDto.validateExistence,
+      autoCleanup: searchDto.autoCleanup,
     }
 
     const result = await this.storageService.searchFiles(query)
@@ -291,6 +293,57 @@ export class FilesService {
 
     // 从存储服务中移除文件记录（但不删除物理文件，因为已经移动到回收站）
     this.storageService.removeFileFromMetadata(id)
+  }
+
+  /**
+   * 同步文件元数据与物理文件
+   * 清理指向不存在物理文件的元数据记录
+   */
+  async syncFileMetadata(): Promise<{
+    totalFiles: number
+    removedFiles: string[]
+    errors: string[]
+  }> {
+    const result = await this.storageService.syncFileMetadata()
+
+    // 如果有文件被清理，通知文件夹服务更新统计
+    if (result.removedFiles.length > 0 && result.affectedFolders.size > 0) {
+      try {
+        // 动态导入 FoldersService 以避免循环依赖
+        const { FoldersService } = await import('../folders/folders.service')
+        const foldersService = new FoldersService(this.configService, this.storageService)
+
+        // 刷新受影响文件夹的统计信息
+        await foldersService.refreshFolderStats(Array.from(result.affectedFolders))
+        console.log(`已更新 ${result.affectedFolders.size} 个文件夹的统计信息`)
+      } catch (error) {
+        console.error('更新文件夹统计信息失败:', error)
+        result.errors.push(`更新文件夹统计信息失败: ${error.message}`)
+      }
+    }
+
+    // 返回结果时不包含 affectedFolders，保持API兼容性
+    return {
+      totalFiles: result.totalFiles,
+      removedFiles: result.removedFiles,
+      errors: result.errors,
+    }
+  }
+
+  /**
+   * 验证文件完整性
+   * 检查但不删除不存在的文件记录
+   */
+  async validateFileIntegrity(): Promise<{
+    totalFiles: number
+    missingFiles: Array<{
+      id: string
+      originalName: string
+      path: string
+    }>
+    errors: string[]
+  }> {
+    return await this.storageService.validateFileIntegrity()
   }
 
   /**

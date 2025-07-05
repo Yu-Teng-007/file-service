@@ -149,6 +149,24 @@ export class FoldersController {
     }
   }
 
+  @Post('refresh-stats')
+  @ApiOperation({
+    summary: '刷新文件夹统计',
+    description: '重新计算所有文件夹的文件数量和大小统计',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: '文件夹统计刷新成功',
+    type: ApiResponseDto,
+  })
+  async refreshFolderStats(): Promise<ApiResponseDto> {
+    await this.foldersService.refreshAllFolderStats()
+    return {
+      success: true,
+      message: '文件夹统计信息已刷新',
+    }
+  }
+
   @Get(':id/files')
   @ApiOperation({ summary: '获取文件夹中的文件', description: '获取指定文件夹中的所有文件' })
   @ApiParam({ name: 'id', description: '文件夹ID' })

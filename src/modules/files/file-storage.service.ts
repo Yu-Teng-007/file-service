@@ -210,6 +210,38 @@ export class FileStorageService {
   }> {
     let files = Array.from(this.fileMetadata.values())
 
+    // 如果启用了文件存在性检查，过滤掉不存在的文件
+    if (query.validateExistence !== false) {
+      const validFiles: StoredFileMetadata[] = []
+      const invalidFileIds: string[] = []
+
+      for (const file of files) {
+        try {
+          const exists = await this.fileExists(file.path)
+          if (exists) {
+            validFiles.push(file)
+          } else {
+            // 记录不存在的文件，但不立即删除元数据
+            console.warn(`文件不存在: ${file.originalName} (${file.path})`)
+            invalidFileIds.push(file.id)
+          }
+        } catch (error) {
+          console.error(`检查文件存在性时出错: ${file.originalName}`, error)
+          // 出错时保留文件记录
+          validFiles.push(file)
+        }
+      }
+
+      files = validFiles
+
+      // 如果有不存在的文件且启用了自动清理，异步清理元数据
+      if (invalidFileIds.length > 0 && query.autoCleanup === true) {
+        this.cleanupInvalidFiles(invalidFileIds).catch(error => {
+          console.error('清理无效文件记录时出错:', error)
+        })
+      }
+    }
+
     // 应用筛选条件
     if (query.category) {
       files = files.filter(f => f.category === query.category)
@@ -409,6 +441,133 @@ export class FileStorageService {
 
     // 保存元数据
     await this.saveMetadata()
+  }
+
+  /**
+   * 同步文件元数据与物理文件
+   * 检查并清理指向不存在物理文件的元数据记录
+   */
+  async syncFileMetadata(): Promise<{
+    totalFiles: number
+    removedFiles: string[]
+    errors: string[]
+    affectedFolders: Set<string>
+  }> {
+    const removedFiles: string[] = []
+    const errors: string[] = []
+    const affectedFolders = new Set<string>()
+    const totalFiles = this.fileMetadata.size
+
+    console.log(`开始同步文件元数据，共 ${totalFiles} 个文件记录`)
+
+    for (const [fileId, metadata] of this.fileMetadata.entries()) {
+      try {
+        // 检查物理文件是否存在
+        const exists = await this.fileExists(metadata.path)
+
+        if (!exists) {
+          console.log(`发现不存在的文件: ${metadata.originalName} (${metadata.path})`)
+
+          // 记录受影响的文件夹
+          if (metadata.folderId) {
+            affectedFolders.add(metadata.folderId)
+          }
+
+          // 从元数据中移除
+          this.fileMetadata.delete(fileId)
+          removedFiles.push(`${metadata.originalName} (ID: ${fileId})`)
+        }
+      } catch (error) {
+        const errorMsg = `检查文件 ${metadata.originalName} 时出错: ${error.message}`
+        console.error(errorMsg)
+        errors.push(errorMsg)
+      }
+    }
+
+    // 如果有文件被移除，保存更新后的元数据
+    if (removedFiles.length > 0) {
+      try {
+        await this.saveMetadata()
+        console.log(`已清理 ${removedFiles.length} 个无效文件记录`)
+      } catch (error) {
+        const errorMsg = `保存元数据时出错: ${error.message}`
+        console.error(errorMsg)
+        errors.push(errorMsg)
+      }
+    }
+
+    return {
+      totalFiles,
+      removedFiles,
+      errors,
+      affectedFolders,
+    }
+  }
+
+  /**
+   * 验证所有文件的完整性
+   * 返回不存在的文件列表，但不删除记录
+   */
+  async validateFileIntegrity(): Promise<{
+    totalFiles: number
+    missingFiles: Array<{
+      id: string
+      originalName: string
+      path: string
+    }>
+    errors: string[]
+  }> {
+    const missingFiles: Array<{
+      id: string
+      originalName: string
+      path: string
+    }> = []
+    const errors: string[] = []
+    const totalFiles = this.fileMetadata.size
+
+    console.log(`开始验证文件完整性，共 ${totalFiles} 个文件记录`)
+
+    for (const [fileId, metadata] of this.fileMetadata.entries()) {
+      try {
+        // 检查物理文件是否存在
+        const exists = await this.fileExists(metadata.path)
+
+        if (!exists) {
+          missingFiles.push({
+            id: fileId,
+            originalName: metadata.originalName,
+            path: metadata.path,
+          })
+        }
+      } catch (error) {
+        const errorMsg = `检查文件 ${metadata.originalName} 时出错: ${error.message}`
+        console.error(errorMsg)
+        errors.push(errorMsg)
+      }
+    }
+
+    return {
+      totalFiles,
+      missingFiles,
+      errors,
+    }
+  }
+
+  /**
+   * 清理无效文件记录（异步执行）
+   */
+  private async cleanupInvalidFiles(fileIds: string[]): Promise<void> {
+    try {
+      for (const fileId of fileIds) {
+        this.fileMetadata.delete(fileId)
+      }
+
+      await this.saveMetadata()
+      console.log(`已清理 ${fileIds.length} 个无效文件记录`)
+    } catch (error) {
+      console.error('清理无效文件记录失败:', error)
+      throw error
+    }
   }
 
   /**
