@@ -11,6 +11,8 @@ import type {
   ImageProcessingOptions,
   ImageProcessingResult,
   FilePreviewInfo,
+  WordPreviewResult,
+  ExcelPreviewResult,
   TrashItem,
   FileVersion,
   FileTag,
@@ -383,6 +385,26 @@ export class FilesApi {
    */
   static async getFilePreviewInfo(id: string): Promise<FilePreviewInfo> {
     const response = await apiClient.get<ApiResponse<FilePreviewInfo>>(`/files/${id}/preview-info`)
+    return response.data!
+  }
+
+  /**
+   * 获取Word文档预览HTML
+   */
+  static async getWordDocumentPreview(id: string): Promise<WordPreviewResult> {
+    const response = await apiClient.get<ApiResponse<WordPreviewResult>>(
+      `/files/${id}/word-preview`
+    )
+    return response.data!
+  }
+
+  /**
+   * 获取Excel文档预览HTML
+   */
+  static async getExcelDocumentPreview(id: string): Promise<ExcelPreviewResult> {
+    const response = await apiClient.get<ApiResponse<ExcelPreviewResult>>(
+      `/files/${id}/excel-preview`
+    )
     return response.data!
   }
 

@@ -451,7 +451,18 @@ export class FilesController {
             id: { type: 'string', description: '文件ID' },
             type: {
               type: 'string',
-              enum: ['image', 'video', 'audio', 'pdf', 'text', 'code', 'office', 'unsupported'],
+              enum: [
+                'image',
+                'video',
+                'audio',
+                'pdf',
+                'text',
+                'code',
+                'word',
+                'excel',
+                'office',
+                'unsupported',
+              ],
               description: '预览类型',
             },
             previewUrl: { type: 'string', description: '预览URL' },
@@ -486,6 +497,76 @@ export class FilesController {
       success: true,
       message: '获取文件预览信息成功',
       data: previewInfo,
+    }
+  }
+
+  @Get(':id/word-preview')
+  @ApiOperation({ summary: '预览Word文档', description: '将Word文档转换为HTML进行预览' })
+  @ApiParam({ name: 'id', description: '文件ID' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Word文档预览成功',
+    schema: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean' },
+        message: { type: 'string' },
+        data: {
+          type: 'object',
+          properties: {
+            html: { type: 'string', description: '转换后的HTML内容' },
+            fileInfo: {
+              type: 'object',
+              description: '文件信息',
+            },
+          },
+        },
+      },
+    },
+  })
+  @ApiResponse({ status: HttpStatus.NOT_FOUND, description: '文件不存在' })
+  @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: '不支持的文件格式' })
+  async getWordDocumentPreview(@Param('id', ParseUUIDPipe) id: string) {
+    const result = await this.filesService.getWordDocumentPreview(id)
+    return {
+      success: true,
+      message: 'Word文档预览生成成功',
+      data: result,
+    }
+  }
+
+  @Get(':id/excel-preview')
+  @ApiOperation({ summary: '预览Excel文档', description: '将Excel文档转换为HTML表格进行预览' })
+  @ApiParam({ name: 'id', description: '文件ID' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Excel文档预览成功',
+    schema: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean' },
+        message: { type: 'string' },
+        data: {
+          type: 'object',
+          properties: {
+            html: { type: 'string', description: '转换后的HTML表格内容' },
+            fileInfo: {
+              type: 'object',
+              description: '文件信息',
+            },
+          },
+        },
+      },
+    },
+  })
+  @ApiResponse({ status: HttpStatus.NOT_FOUND, description: '文件不存在' })
+  @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: '不支持的文件格式' })
+  async getExcelDocumentPreview(@Param('id', ParseUUIDPipe) id: string) {
+    const result = await this.filesService.getExcelDocumentPreview(id)
+    return {
+      success: true,
+      message: 'Excel文档预览生成成功',
+      data: result,
     }
   }
 

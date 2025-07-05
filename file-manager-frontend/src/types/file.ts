@@ -144,7 +144,17 @@ export interface ImageProcessingResult {
 // 文件预览相关类型
 export interface FilePreviewInfo {
   id: string
-  type: 'image' | 'video' | 'audio' | 'pdf' | 'text' | 'code' | 'office' | 'unsupported'
+  type:
+    | 'image'
+    | 'video'
+    | 'audio'
+    | 'pdf'
+    | 'text'
+    | 'code'
+    | 'word'
+    | 'excel'
+    | 'office'
+    | 'unsupported'
   previewUrl?: string
   thumbnailUrl?: string
   canEdit?: boolean
@@ -155,6 +165,18 @@ export interface FilePreviewInfo {
     encoding?: string // 文本编码
     language?: string // 代码语言
   }
+}
+
+// Word文档预览相关类型
+export interface WordPreviewResult {
+  html: string
+  fileInfo: FileInfo
+}
+
+// Excel文档预览相关类型
+export interface ExcelPreviewResult {
+  html: string
+  fileInfo: FileInfo
 }
 
 // 回收站相关类型

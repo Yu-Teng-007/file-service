@@ -17,6 +17,8 @@ import { ConfigService } from '@nestjs/config'
 import { promises as fs, createReadStream } from 'fs'
 import { join } from 'path'
 import { v4 as uuidv4 } from 'uuid'
+import * as mammoth from 'mammoth'
+import * as XLSX from 'xlsx'
 
 import { FileValidationService } from './file-validation.service'
 import { FileStorageService } from './file-storage.service'
@@ -107,7 +109,6 @@ export class FilesService {
         await this.errorRecoveryService.executeRecovery(error)
       } catch (recoveryError) {
         // 恢复失败，记录日志但不影响原始错误
-        console.warn('错误恢复失败:', recoveryError.message)
       }
 
       throw error
@@ -315,9 +316,7 @@ export class FilesService {
 
         // 刷新受影响文件夹的统计信息
         await foldersService.refreshFolderStats(Array.from(result.affectedFolders))
-        console.log(`已更新 ${result.affectedFolders.size} 个文件夹的统计信息`)
       } catch (error) {
-        console.error('更新文件夹统计信息失败:', error)
         result.errors.push(`更新文件夹统计信息失败: ${error.message}`)
       }
     }
@@ -375,7 +374,7 @@ export class FilesService {
     try {
       await fs.unlink(filePath)
     } catch (error) {
-      console.warn(`清理临时文件失败: ${filePath}`, error)
+      // 清理临时文件失败，忽略错误
     }
   }
 
@@ -552,6 +551,129 @@ export class FilesService {
     return result
   }
 
+  /**
+   * 获取Word文档预览HTML
+   */
+  async getWordDocumentPreview(id: string): Promise<{ html: string; fileInfo: UploadedFileInfo }> {
+    const fileInfo = await this.storageService.getFileInfo(id)
+    if (!fileInfo) {
+      throw new FileNotFoundException(id)
+    }
+
+    // 检查文件是否为Word文档
+    const ext = fileInfo.originalName.split('.').pop()?.toLowerCase()
+    if (!['doc', 'docx'].includes(ext)) {
+      throw new UnsupportedFileTypeException('不支持的Word文档格式')
+    }
+
+    try {
+      // 检查文件是否存在
+      await fs.access(fileInfo.path)
+
+      // 使用mammoth转换Word文档为HTML
+      const result = await mammoth.convertToHtml({ path: fileInfo.path })
+
+      // 处理转换警告
+      if (result.messages.length > 0) {
+        // Word文档转换有警告，但继续处理
+      }
+
+      return {
+        html: result.value,
+        fileInfo,
+      }
+    } catch (error) {
+      throw new FileProcessingException('Word文档预览生成失败')
+    }
+  }
+
+  /**
+   * 获取Excel文档预览HTML
+   */
+  async getExcelDocumentPreview(id: string): Promise<{ html: string; fileInfo: UploadedFileInfo }> {
+    const fileInfo = await this.storageService.getFileInfo(id)
+    if (!fileInfo) {
+      throw new FileNotFoundException(id)
+    }
+
+    // 检查文件是否为Excel文档
+    const ext = fileInfo.originalName.split('.').pop()?.toLowerCase()
+    if (!['xls', 'xlsx'].includes(ext)) {
+      throw new UnsupportedFileTypeException('不支持的Excel文档格式')
+    }
+
+    try {
+      // 检查文件是否存在
+      await fs.access(fileInfo.path)
+
+      // 检查XLSX库是否可用
+      if (!XLSX) {
+        throw new Error('XLSX库未正确加载')
+      }
+
+      // 读取Excel文件
+      const workbook = XLSX.readFile(fileInfo.path)
+
+      // 获取所有工作表名称
+      const sheetNames = workbook.SheetNames
+      if (sheetNames.length === 0) {
+        throw new Error('Excel文件中没有找到工作表')
+      }
+
+      // 生成HTML内容
+      let html = '<div class="excel-preview">'
+
+      // 如果有多个工作表，添加标签页
+      if (sheetNames.length > 1) {
+        html += '<div class="excel-tabs">'
+        sheetNames.forEach((name, index) => {
+          html += `<button class="excel-tab ${index === 0 ? 'active' : ''}" data-sheet="${index}">${name}</button>`
+        })
+        html += '</div>'
+      }
+
+      // 为每个工作表生成HTML表格
+      sheetNames.forEach((sheetName, index) => {
+        const worksheet = workbook.Sheets[sheetName]
+
+        if (!worksheet) {
+          return
+        }
+
+        try {
+          const htmlTable = XLSX.utils.sheet_to_html(worksheet, {
+            id: `sheet-${index}`,
+            editable: false,
+            header: '',
+            footer: '',
+          })
+
+          html += `<div class="excel-sheet ${index === 0 ? 'active' : ''}" data-sheet="${index}">`
+          html += `<h3 class="sheet-title">${sheetName}</h3>`
+          html += htmlTable
+          html += '</div>'
+        } catch (sheetError) {
+          html += `<div class="excel-sheet ${index === 0 ? 'active' : ''}" data-sheet="${index}">`
+          html += `<h3 class="sheet-title">${sheetName}</h3>`
+          html += `<p>无法预览此工作表: ${sheetError.message}</p>`
+          html += '</div>'
+        }
+      })
+
+      html += '</div>'
+
+      // 不在这里添加JavaScript，因为v-html不会执行脚本
+      // 标签页切换逻辑将在前端Vue组件中处理
+
+      return {
+        html,
+        fileInfo,
+      }
+    } catch (error) {
+      throw new FileProcessingException(`Excel文档预览生成失败: ${error.message}`)
+    }
+  }
+
   private determinePreviewType(mimeType: string, filename: string): string {
     if (mimeType.startsWith('image/')) return 'image'
     if (mimeType.startsWith('video/')) return 'video'
@@ -592,8 +714,18 @@ export class FilesService {
       return 'code'
     }
 
-    // Office文档
-    if (['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx'].includes(ext)) {
+    // Word文档
+    if (['doc', 'docx'].includes(ext)) {
+      return 'word'
+    }
+
+    // Excel文档
+    if (['xls', 'xlsx'].includes(ext)) {
+      return 'excel'
+    }
+
+    // 其他Office文档
+    if (['ppt', 'pptx'].includes(ext)) {
       return 'office'
     }
 

@@ -123,6 +123,40 @@
             <pre class="code-content"><code v-html="highlightedCode"></code></pre>
           </div>
 
+          <!-- Word文档预览 -->
+          <div v-else-if="previewInfo?.type === 'word'" class="word-preview">
+            <div v-if="wordContent" class="word-content">
+              <div class="word-toolbar">
+                <span class="file-name">{{ fileInfo?.originalName || fileInfo?.filename }}</span>
+                <el-button size="small" @click="downloadFile">
+                  {{ $t('preview.download') }}
+                </el-button>
+              </div>
+              <div class="word-html-content" v-html="wordContent"></div>
+            </div>
+            <div v-else class="word-loading">
+              <el-icon class="is-loading" size="32"><Loading /></el-icon>
+              <p>{{ $t('preview.wordLoading') }}</p>
+            </div>
+          </div>
+
+          <!-- Excel文档预览 -->
+          <div v-else-if="previewInfo?.type === 'excel'" class="excel-preview">
+            <div v-if="excelContent" class="excel-content">
+              <div class="excel-toolbar">
+                <span class="file-name">{{ fileInfo?.originalName || fileInfo?.filename }}</span>
+                <el-button size="small" @click="downloadFile">
+                  {{ $t('preview.download') }}
+                </el-button>
+              </div>
+              <div ref="excelContentRef" class="excel-html-content" v-html="excelContent"></div>
+            </div>
+            <div v-else class="excel-loading">
+              <el-icon class="is-loading" size="32"><Loading /></el-icon>
+              <p>{{ $t('preview.excelLoading') }}</p>
+            </div>
+          </div>
+
           <!-- Office文档预览 -->
           <div v-else-if="previewInfo?.type === 'office'" class="office-preview">
             <div class="office-placeholder">
@@ -270,6 +304,9 @@ const textEncoding = ref('utf8')
 const highlightedCode = ref('')
 const codeLanguage = ref('')
 const showImageEditor = ref(false)
+const wordContent = ref('')
+const excelContent = ref('')
+const excelContentRef = ref<HTMLElement>()
 
 // Image controls
 const imageScale = ref(1)
@@ -307,6 +344,10 @@ const loadPreview = async () => {
     // Load specific content based on type
     if (previewInfo.value.type === 'text' || previewInfo.value.type === 'code') {
       await loadTextContent()
+    } else if (previewInfo.value.type === 'word') {
+      await loadWordContent()
+    } else if (previewInfo.value.type === 'excel') {
+      await loadExcelContent()
     }
   } catch (err) {
     console.error('Failed to load preview:', err)
@@ -337,6 +378,109 @@ const loadTextContent = async () => {
     console.error('Failed to load text content:', err)
     textContent.value = t('preview.textLoadError')
   }
+}
+
+const loadWordContent = async () => {
+  if (!props.fileInfo) return
+
+  try {
+    const result = await FilesApi.getWordDocumentPreview(props.fileInfo.id)
+    wordContent.value = result.html
+  } catch (err) {
+    console.error('Failed to load Word content:', err)
+    error.value = t('preview.wordLoadError')
+  }
+}
+
+const loadExcelContent = async () => {
+  if (!props.fileInfo) return
+
+  try {
+    const result = await FilesApi.getExcelDocumentPreview(props.fileInfo.id)
+    excelContent.value = result.html
+
+    // 使用setTimeout确保DOM完全更新
+    setTimeout(() => {
+      setupExcelTabSwitching()
+    }, 100)
+  } catch (err) {
+    console.error('Failed to load Excel content:', err)
+    error.value = t('preview.excelLoadError')
+  }
+}
+
+const setupExcelTabSwitching = () => {
+  console.log('Setting up Excel tab switching...')
+
+  if (!excelContentRef.value) {
+    console.log('Excel content ref not available')
+    return
+  }
+
+  // 直接查找所有标签页按钮
+  const tabs = excelContentRef.value.querySelectorAll('.excel-tab')
+  const sheets = excelContentRef.value.querySelectorAll('.excel-sheet')
+
+  console.log('Found tabs:', tabs.length, 'sheets:', sheets.length)
+
+  if (tabs.length === 0) {
+    console.log('No tabs found, retrying in 200ms...')
+    setTimeout(() => setupExcelTabSwitching(), 200)
+    return
+  }
+
+  // 为每个标签页直接绑定点击事件
+  tabs.forEach((tab, index) => {
+    // 移除之前的事件监听器（如果有）
+    const oldHandler = (tab as any)._clickHandler
+    if (oldHandler) {
+      tab.removeEventListener('click', oldHandler)
+    }
+
+    // 创建新的点击处理器
+    const clickHandler = (event: Event) => {
+      event.preventDefault()
+      event.stopPropagation()
+
+      const target = event.target as HTMLElement
+      const sheetIndex = target.dataset.sheet
+
+      console.log('Tab clicked:', sheetIndex, 'target:', target)
+
+      // 移除所有活动状态
+      tabs.forEach(t => t.classList.remove('active'))
+      sheets.forEach(s => s.classList.remove('active'))
+
+      // 添加活动状态
+      target.classList.add('active')
+
+      // 查找对应的工作表
+      const targetSheet = excelContentRef.value?.querySelector(
+        `[data-sheet="${sheetIndex}"].excel-sheet`
+      )
+      if (targetSheet) {
+        targetSheet.classList.add('active')
+        console.log('Successfully switched to sheet:', sheetIndex)
+      } else {
+        console.log('Target sheet not found for index:', sheetIndex)
+        // 打印所有可用的工作表
+        const allSheets = excelContentRef.value?.querySelectorAll('.excel-sheet')
+        console.log(
+          'Available sheets:',
+          Array.from(allSheets || []).map(s => s.getAttribute('data-sheet'))
+        )
+      }
+    }
+
+    // 绑定事件监听器
+    tab.addEventListener('click', clickHandler)
+    // 保存引用以便清理
+    ;(tab as any)._clickHandler = clickHandler
+
+    console.log(`Bound click handler to tab ${index}:`, tab)
+  })
+
+  console.log('Excel tab switching setup complete')
 }
 
 const detectLanguage = (filename: string): string => {
@@ -464,11 +608,17 @@ watch(visible, newVisible => {
     nextTick(() => {
       loadPreview()
     })
+  } else if (!newVisible) {
+    // 清理状态，确保下次打开时重新加载
+    excelContent.value = ''
+    wordContent.value = ''
+    textContent.value = ''
+    highlightedCode.value = ''
   }
 })
 </script>
 
-<style scoped>
+<style scoped lang="scss">
 .file-preview {
   .preview-dialog {
     :deep(.el-dialog) {
@@ -681,6 +831,212 @@ watch(visible, newVisible => {
     line-height: 1.5;
     white-space: pre-wrap;
     word-break: break-all;
+  }
+
+  .word-preview {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    height: 100%;
+
+    .word-content {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+    }
+
+    .word-toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--el-border-color-light);
+      background-color: var(--el-bg-color-page);
+
+      .file-name {
+        font-weight: 500;
+        color: var(--el-text-color-primary);
+      }
+    }
+
+    .word-html-content {
+      flex: 1;
+      padding: 20px;
+      overflow-y: auto;
+      background-color: white;
+
+      :deep(p) {
+        margin: 0 0 12px 0;
+        line-height: 1.6;
+      }
+
+      :deep(h1),
+      :deep(h2),
+      :deep(h3),
+      :deep(h4),
+      :deep(h5),
+      :deep(h6) {
+        margin: 20px 0 12px 0;
+        font-weight: bold;
+      }
+
+      :deep(ul),
+      :deep(ol) {
+        margin: 12px 0;
+        padding-left: 24px;
+      }
+
+      :deep(table) {
+        border-collapse: collapse;
+        width: 100%;
+        margin: 12px 0;
+
+        th,
+        td {
+          border: 1px solid #ddd;
+          padding: 8px;
+          text-align: left;
+        }
+
+        th {
+          background-color: #f5f5f5;
+          font-weight: bold;
+        }
+      }
+
+      :deep(img) {
+        max-width: 100%;
+        height: auto;
+        margin: 12px 0;
+      }
+    }
+
+    .word-loading {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      flex: 1;
+      gap: 12px;
+      color: var(--el-text-color-secondary);
+    }
+  }
+
+  .excel-preview {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    height: 100%;
+
+    .excel-content {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+    }
+
+    .excel-toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--el-border-color-light);
+      background-color: var(--el-bg-color-page);
+
+      .file-name {
+        font-weight: 500;
+        color: var(--el-text-color-primary);
+      }
+    }
+
+    .excel-html-content {
+      flex: 1;
+      padding: 20px;
+      overflow: auto;
+      background-color: white;
+
+      // Excel表格样式
+      :deep(.excel-preview) {
+        .excel-tabs {
+          display: flex;
+          border-bottom: 1px solid #ddd;
+          margin-bottom: 16px;
+
+          .excel-tab {
+            padding: 8px 16px;
+            border: 1px solid #ddd;
+            border-bottom: none;
+            background-color: #f5f5f5;
+            cursor: pointer;
+            margin-right: 2px;
+
+            &.active {
+              background-color: white;
+              border-bottom: 1px solid white;
+              margin-bottom: -1px;
+            }
+
+            &:hover {
+              background-color: #e9e9e9;
+            }
+          }
+        }
+
+        .excel-sheet {
+          display: none;
+
+          &.active {
+            display: block;
+          }
+
+          .sheet-title {
+            margin: 0 0 16px 0;
+            font-size: 18px;
+            font-weight: bold;
+            color: var(--el-text-color-primary);
+          }
+        }
+      }
+
+      :deep(table) {
+        border-collapse: collapse;
+        width: 100%;
+        margin: 12px 0;
+        font-size: 14px;
+
+        th,
+        td {
+          border: 1px solid #ddd;
+          padding: 6px 8px;
+          text-align: left;
+          vertical-align: top;
+          min-width: 60px;
+        }
+
+        th {
+          background-color: #f5f5f5;
+          font-weight: bold;
+          text-align: center;
+        }
+
+        tr:nth-child(even) {
+          background-color: #f9f9f9;
+        }
+
+        tr:hover {
+          background-color: #f0f8ff;
+        }
+      }
+    }
+
+    .excel-loading {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      flex: 1;
+      gap: 12px;
+      color: var(--el-text-color-secondary);
+    }
   }
 
   .office-preview,
