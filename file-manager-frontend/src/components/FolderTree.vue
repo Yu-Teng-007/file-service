@@ -264,7 +264,6 @@ const contextMenuStyle = ref<any>({})
 const expandedKeys = ref<string[]>([])
 const currentSelectedKey = ref<string>('all')
 
-// Forms
 const createForm = reactive<FolderCreateDto>({
   name: '',
   parentId: undefined,
@@ -562,7 +561,6 @@ const handleRefresh = async () => {
   }
 }
 
-// Lifecycle
 onMounted(async () => {
   await loadFolders()
   // 默认选择【全部】文件夹

@@ -238,6 +238,7 @@
     "moveFiles": "移动文件",
     "copyFiles": "复制文件",
     "moveDescription": "将选中的 {count} 个文件移动到：",
+    "singleMoveDescription": "将文件移动到：",
     "targetFolder": "目标文件夹",
     "targetCategory": "目标分类",
     "selectFolder": "选择文件夹",

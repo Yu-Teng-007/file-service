@@ -431,7 +431,12 @@ export class FileStorageService {
               await this.updateFileInfo(fileId, { accessLevel: operation.targetAccessLevel })
             }
             break
-          // TODO: 实现 move 和 copy 操作
+          case 'move':
+            if (operation.targetCategory) {
+              await this.moveFileToCategory(fileId, operation.targetCategory)
+            }
+            break
+          // TODO: 实现 copy 操作
         }
         results.success++
       } catch (error) {
@@ -441,6 +446,50 @@ export class FileStorageService {
     }
 
     return results
+  }
+
+  /**
+   * 移动文件到不同分类
+   */
+  async moveFileToCategory(fileId: string, targetCategory: FileCategory): Promise<void> {
+    const metadata = this.fileMetadata.get(fileId)
+    if (!metadata) {
+      throw new NotFoundException('文件不存在')
+    }
+
+    // 如果分类相同，无需移动
+    if (metadata.category === targetCategory) {
+      return
+    }
+
+    // 构建新的文件路径
+    const filename = metadata.filename
+    const newCategoryDir = join(this.uploadDir, targetCategory)
+    const newFilePath = join(newCategoryDir, filename)
+
+    // 确保目标分类目录存在
+    await fs.mkdir(newCategoryDir, { recursive: true })
+
+    // 移动物理文件
+    if (metadata.path && metadata.path !== newFilePath) {
+      try {
+        await fs.access(metadata.path) // 检查源文件是否存在
+        await fs.rename(metadata.path, newFilePath)
+      } catch (error) {
+        console.warn(`移动物理文件失败: ${metadata.path} -> ${newFilePath}`, error)
+        // 如果物理文件移动失败，仍然更新元数据，但记录警告
+      }
+    }
+
+    // 更新元数据
+    const newUrl = `/uploads/${targetCategory}/${filename}`
+    metadata.category = targetCategory
+    metadata.path = newFilePath
+    metadata.url = newUrl
+    metadata.folderId = undefined // 移动到分类时清除文件夹关联
+
+    this.fileMetadata.set(fileId, metadata)
+    await this.saveMetadata()
   }
 
   /**

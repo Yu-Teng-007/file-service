@@ -40,7 +40,7 @@
           <div class="toolbar-left">
             <!-- 面包屑导航 -->
             <el-breadcrumb separator="/" class="breadcrumb">
-              <el-breadcrumb-item @click="handleFolderSelect(null)">
+              <el-breadcrumb-item @click="handleRootSelect">
                 {{ $t('folder.root') }}
               </el-breadcrumb-item>
               <el-breadcrumb-item
@@ -200,6 +200,9 @@
                     <template #dropdown>
                       <el-dropdown-menu class="action-dropdown">
                         <el-dropdown-item command="rename" :icon="Edit">重命名</el-dropdown-item>
+                        <el-dropdown-item command="move" :icon="FolderOpened">
+                          移动
+                        </el-dropdown-item>
                         <el-dropdown-item command="properties" :icon="InfoFilled">
                           属性
                         </el-dropdown-item>
@@ -304,20 +307,66 @@
     <!-- 重命名对话框 -->
     <RenameDialog v-model="showRenameDialog" :file="selectedFile" @renamed="handleFileRenamed" />
 
+    <!-- 移动文件对话框 -->
+    <el-dialog v-model="showMoveDialog" :title="$t('file.move')" width="500px">
+      <div class="move-dialog-content">
+        <p>{{ $t('batch.singleMoveDescription') }}</p>
+        <p>
+          <strong>{{ selectedFile?.originalName }}</strong>
+        </p>
+
+        <el-form :model="moveForm" label-width="100px">
+          <el-form-item :label="$t('batch.targetFolder')">
+            <el-tree-select
+              v-model="moveForm.folderId"
+              :data="foldersStore.folderTree"
+              :props="folderTreeProps"
+              :placeholder="$t('batch.selectFolder')"
+              clearable
+              check-strictly
+            />
+          </el-form-item>
+
+          <el-form-item :label="$t('batch.targetCategory')">
+            <el-select
+              v-model="moveForm.category"
+              :placeholder="$t('batch.selectCategory')"
+              clearable
+            >
+              <el-option
+                v-for="category in categories"
+                :key="category.value"
+                :label="category.label"
+                :value="category.value"
+              />
+            </el-select>
+          </el-form-item>
+        </el-form>
+      </div>
+
+      <template #footer>
+        <el-button @click="showMoveDialog = false">
+          {{ $t('common.cancel') }}
+        </el-button>
+        <el-button type="primary" :loading="processing" @click="handleMoveConfirm">
+          {{ $t('batch.move') }}
+        </el-button>
+      </template>
+    </el-dialog>
+
     <!-- 回收站管理 -->
     <TrashManager v-model="showTrashManager" @files-restored="handleFilesRestored" />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch, reactive } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   Upload,
   Search,
   Refresh,
-  ArrowDown,
   Delete,
   List,
   Grid,
@@ -332,6 +381,7 @@ import {
   View,
   Download,
   MoreFilled,
+  FolderOpened,
 } from '@element-plus/icons-vue'
 import dayjs from 'dayjs'
 import { useConfigStore } from '@/stores/config'
@@ -367,6 +417,21 @@ const showImageEditor = ref(false)
 const showPropertiesDialog = ref(false)
 const showRenameDialog = ref(false)
 const showTrashManager = ref(false)
+const showMoveDialog = ref(false)
+const processing = ref(false)
+
+// 移动表单
+const moveForm = reactive({
+  folderId: '',
+  category: '',
+})
+
+// 文件夹树属性配置
+const folderTreeProps = {
+  children: 'children',
+  label: 'name',
+  value: 'id',
+}
 
 // 计算属性
 const categories = computed(() => [
@@ -458,12 +523,20 @@ const toggleFileSelection = (id: string) => {
 }
 
 // 文件夹相关方法
+const handleRootSelect = () => {
+  // 选择根目录时，实际上是选择"全部"文件夹
+  const allFolder = foldersStore.folderTree.find(folder => folder.id === 'all')
+  if (allFolder) {
+    handleFolderSelect(allFolder)
+  }
+}
+
 const handleFolderSelect = (folder: FolderInfo | null) => {
   currentFolderId.value = folder?.id
   updateBreadcrumbPath(folder)
   // 根据文件夹筛选文件，【全部】文件夹显示所有文件
   if (folder?.id === 'all') {
-    filesStore.setFolderFilter(undefined) // 不设置筛选，显示所有文件
+    filesStore.setFolderFilter('all') // 使用 'all' 作为特殊标识
   } else {
     filesStore.setFolderFilter(folder?.id)
   }
@@ -546,6 +619,9 @@ const handleFileAction = (command: string, file: FileInfo) => {
     case 'rename':
       showRenameDialog.value = true
       break
+    case 'move':
+      showMoveDialog.value = true
+      break
     case 'properties':
       showPropertiesDialog.value = true
       break
@@ -586,6 +662,45 @@ const handleDeleteFile = async (file: FileInfo) => {
   }
 }
 
+const handleMoveConfirm = async () => {
+  try {
+    processing.value = true
+
+    if (!selectedFile.value) {
+      ElMessage.error('请选择要移动的文件')
+      return
+    }
+
+    if (moveForm.folderId) {
+      await FilesApi.moveFilesToFolder([selectedFile.value.id], moveForm.folderId)
+    } else if (moveForm.category) {
+      const operation = {
+        action: 'move' as const,
+        fileIds: [selectedFile.value.id],
+        targetCategory: moveForm.category as FileCategory,
+      }
+      await FilesApi.batchOperation(operation)
+    } else {
+      ElMessage.error('请选择目标文件夹或分类')
+      return
+    }
+
+    showMoveDialog.value = false
+    moveForm.folderId = ''
+    moveForm.category = ''
+
+    ElMessage.success('文件移动成功')
+    // 先刷新文件列表，再刷新文件夹统计
+    await filesStore.refreshFiles()
+    await foldersStore.refreshFolders()
+  } catch (error) {
+    console.error('Failed to move file:', error)
+    ElMessage.error('文件移动失败')
+  } finally {
+    processing.value = false
+  }
+}
+
 const handleBatchAction = async (command: string) => {
   if (command === 'delete') {
     try {
@@ -608,9 +723,11 @@ const handleBatchAction = async (command: string) => {
 }
 
 // 批量操作处理
-const handleOperationComplete = (operation: string, count: number) => {
+const handleOperationComplete = async (operation: string, count: number) => {
   ElMessage.success(t(`batch.${operation}Success`, { count }))
-  filesStore.refreshFiles()
+  // 先刷新文件列表，再刷新文件夹统计
+  await filesStore.refreshFiles()
+  await foldersStore.refreshFolders()
   selectedFiles.value = []
 }
 
@@ -659,7 +776,7 @@ onMounted(() => {
 })
 </script>
 
-<style scoped>
+<style scoped lang="scss">
 .file-list-page {
   height: 100%;
   width: 100%;
@@ -978,5 +1095,27 @@ onMounted(() => {
   flex-shrink: 0;
   background-color: var(--el-bg-color);
   border-top: 1px solid var(--el-border-color);
+}
+
+.move-dialog-content {
+  padding: 16px 0;
+
+  p {
+    margin-bottom: 12px;
+    color: var(--el-text-color-regular);
+
+    &:first-child {
+      margin-bottom: 8px;
+    }
+
+    strong {
+      color: var(--el-text-color-primary);
+      font-weight: 600;
+    }
+  }
+
+  .el-form {
+    margin-top: 20px;
+  }
 }
 </style>

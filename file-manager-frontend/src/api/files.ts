@@ -32,7 +32,8 @@ export class FilesApi {
     if (query.limit) params.append('limit', query.limit.toString())
     if (query.category) params.append('category', query.category)
     if (query.search) params.append('search', query.search)
-    if (query.folderId) params.append('folderId', query.folderId)
+    // 'all' 文件夹不传递 folderId 参数，表示获取所有文件
+    if (query.folderId && query.folderId !== 'all') params.append('folderId', query.folderId)
     if (query.sortBy) params.append('sortBy', query.sortBy)
     if (query.sortOrder) params.append('sortOrder', query.sortOrder)
 
@@ -253,9 +254,8 @@ export class FilesApi {
    * 移动文件到文件夹
    */
   static async moveFilesToFolder(fileIds: string[], folderId: string): Promise<void> {
-    await apiClient.post<ApiResponse>('/files/move', {
+    await apiClient.post<ApiResponse>(`/folders/${folderId}/move`, {
       fileIds,
-      targetFolderId: folderId,
     })
   }
 

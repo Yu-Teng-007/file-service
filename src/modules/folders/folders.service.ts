@@ -153,23 +153,49 @@ export class FoldersService {
 
     const result: FolderResponseDto[] = []
 
-    // 如果没有指定父文件夹，添加系统【全部】文件夹
+    // 如果没有指定父文件夹，确保存在系统【全部】文件夹
     if (!parentId) {
-      const allFolderStats = shouldIncludeFiles
-        ? await this.calculateAllFilesStats()
-        : { fileCount: 0, totalSize: 0 }
+      // 检查是否已经存在"全部"文件夹
+      const existingAllFolder = filteredFolders.find(f => f.id === 'all')
 
-      result.push({
-        id: 'all',
-        name: '全部',
-        path: '/',
-        parentId: null,
-        fileCount: allFolderStats.fileCount,
-        totalSize: allFolderStats.totalSize,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        isSystem: true,
-      })
+      if (existingAllFolder) {
+        // 如果已存在，更新其统计信息
+        const allFolderStats = shouldIncludeFiles
+          ? await this.calculateAllFilesStats()
+          : { fileCount: 0, totalSize: 0 }
+
+        result.push({
+          id: existingAllFolder.id,
+          name: existingAllFolder.name,
+          path: existingAllFolder.path,
+          parentId: existingAllFolder.parentId,
+          fileCount: allFolderStats.fileCount,
+          totalSize: allFolderStats.totalSize,
+          createdAt: existingAllFolder.createdAt,
+          updatedAt: existingAllFolder.updatedAt,
+          isSystem: true,
+        })
+
+        // 从 filteredFolders 中移除，避免重复添加
+        filteredFolders = filteredFolders.filter(f => f.id !== 'all')
+      } else {
+        // 如果不存在，创建新的"全部"文件夹
+        const allFolderStats = shouldIncludeFiles
+          ? await this.calculateAllFilesStats()
+          : { fileCount: 0, totalSize: 0 }
+
+        result.push({
+          id: 'all',
+          name: '全部',
+          path: '/',
+          parentId: null,
+          fileCount: allFolderStats.fileCount,
+          totalSize: allFolderStats.totalSize,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          isSystem: true,
+        })
+      }
     }
 
     for (const folder of filteredFolders) {
@@ -473,8 +499,55 @@ export class FoldersService {
       throw new NotFoundException('目标文件夹不存在')
     }
 
-    // 这里应该更新文件的文件夹关联
-    // 简化实现，只做验证
-    console.log(`Moving files ${fileIds.join(', ')} to folder ${folderId}`)
+    // 确保目标文件夹的物理目录存在
+    const targetFolderPath = join(this.uploadDir, 'folders', folderId)
+    await fs.mkdir(targetFolderPath, { recursive: true })
+
+    // 移动每个文件
+    for (const fileId of fileIds) {
+      try {
+        await this.moveFileToFolder(fileId, folderId, targetFolderPath)
+      } catch (error) {
+        console.warn(`移动文件 ${fileId} 失败:`, error.message)
+        // 继续处理其他文件，不抛出错误
+      }
+    }
+
+    console.log(`Successfully moved ${fileIds.length} files to folder ${folderId}`)
+  }
+
+  private async moveFileToFolder(
+    fileId: string,
+    folderId: string,
+    targetFolderPath: string
+  ): Promise<void> {
+    // 获取文件信息
+    const fileInfo = await this.fileStorageService.getFileInfo(fileId)
+    if (!fileInfo) {
+      throw new NotFoundException(`文件 ${fileId} 不存在`)
+    }
+
+    // 构建新的文件路径
+    const filename = fileInfo.filename
+    const newFilePath = join(targetFolderPath, filename)
+
+    // 移动物理文件
+    if (fileInfo.path && fileInfo.path !== newFilePath) {
+      try {
+        await fs.access(fileInfo.path) // 检查源文件是否存在
+        await fs.rename(fileInfo.path, newFilePath)
+      } catch (error) {
+        console.warn(`移动物理文件失败: ${fileInfo.path} -> ${newFilePath}`, error)
+        // 如果物理文件移动失败，仍然更新元数据，但记录警告
+      }
+    }
+
+    // 更新文件元数据
+    const newUrl = `/uploads/folders/${folderId}/${filename}`
+    await this.fileStorageService.updateFileInfo(fileId, {
+      folderId,
+      path: newFilePath,
+      url: newUrl,
+    })
   }
 }
