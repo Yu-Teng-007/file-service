@@ -516,6 +516,12 @@ const handleRename = async () => {
 const handleDelete = async () => {
   if (!selectedNode.value) return
 
+  // 系统文件夹不能删除
+  if (selectedNode.value.data.isSystem) {
+    ElMessage.warning('系统文件夹不能删除')
+    return
+  }
+
   try {
     await ElMessageBox.confirm(
       t('folder.deleteConfirm', { name: selectedNode.value.data.name }),
@@ -527,70 +533,15 @@ const handleDelete = async () => {
       }
     )
 
-    // 首先尝试普通删除
+    // 尝试删除文件夹
     try {
-      await FilesApi.deleteFolder(selectedNode.value.data.id, false)
+      await FilesApi.deleteFolder(selectedNode.value.data.id)
       await loadFolders(true) // 强制刷新文件夹列表
       ElMessage.success(t('folder.deleteSuccess'))
       emit('folder-deleted', selectedNode.value.data.id)
     } catch (deleteError: any) {
-      // 调试：打印错误信息
-      console.log('Delete error:', deleteError)
-      console.log('Error response:', deleteError?.response)
-      console.log('Error response data:', deleteError?.response?.data)
-
-      // 检查是否是文件夹不为空的错误 - 使用更宽泛的检查
-      const errorData = deleteError?.response?.data || {}
-      const errorMessage = errorData.message || deleteError?.message || ''
-      const errorCode = errorData.code || deleteError?.code || ''
-      const httpStatus = deleteError?.response?.status || deleteError?.status
-
-      console.log('Error message:', errorMessage)
-      console.log('Error code:', errorCode)
-      console.log('HTTP status:', httpStatus)
-
-      // 检查多种可能的错误标识
-      // 如果是400错误，很可能是文件夹不为空的错误
-      const isNotEmptyError =
-        errorMessage.includes('不为空') ||
-        errorMessage.includes('not empty') ||
-        errorMessage.includes('无法删除') ||
-        errorMessage.includes('force=true') ||
-        (errorCode === 'BAD_REQUEST' && errorMessage.includes('删除')) ||
-        (errorCode === 'ERR_BAD_REQUEST' && httpStatus === 400) ||
-        (httpStatus === 400 && errorMessage.includes('删除')) ||
-        httpStatus === 400 // 简化：所有400错误都当作文件夹不为空处理
-
-      console.log('Is not empty error:', isNotEmptyError)
-
-      if (isNotEmptyError) {
-        try {
-          await ElMessageBox.confirm(
-            t('folder.deleteNotEmptyConfirm', { name: selectedNode.value.data.name }),
-            t('folder.deleteTitle'),
-            {
-              confirmButtonText: t('folder.forceDelete'),
-              cancelButtonText: t('common.cancel'),
-              type: 'error',
-              dangerouslyUseHTMLString: true,
-            }
-          )
-
-          // 强制删除
-          await FilesApi.deleteFolder(selectedNode.value.data.id, true)
-          await loadFolders(true) // 强制刷新文件夹列表
-          ElMessage.success(t('folder.deleteSuccess'))
-          emit('folder-deleted', selectedNode.value.data.id)
-        } catch (forceError) {
-          if (forceError !== 'cancel') {
-            console.error('Failed to force delete folder:', forceError)
-            ElMessage.error(t('folder.deleteError'))
-          }
-        }
-      } else {
-        // 其他错误，不重复显示错误消息（API客户端已经显示了）
-        console.error('Failed to delete folder:', deleteError)
-      }
+      // 删除失败，错误信息已由API客户端处理，这里不需要额外处理
+      console.error('Failed to delete folder:', deleteError)
     }
   } catch (error) {
     if (error !== 'cancel') {

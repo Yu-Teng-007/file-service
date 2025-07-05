@@ -237,8 +237,8 @@ export class FilesApi {
   /**
    * 删除文件夹
    */
-  static async deleteFolder(id: string, force: boolean = false): Promise<void> {
-    await apiClient.delete<ApiResponse>(`/folders/${id}?force=${force}`)
+  static async deleteFolder(id: string): Promise<void> {
+    await apiClient.delete<ApiResponse>(`/folders/${id}`)
   }
 
   /**

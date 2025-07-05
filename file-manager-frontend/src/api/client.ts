@@ -62,30 +62,33 @@ class ApiClient {
     if (error.response) {
       const { status, data } = error.response
 
+      // 优先使用后端返回的错误消息
+      const backendMessage = data?.error?.message || data?.message
+
       switch (status) {
         case 400:
-          message = data?.message || '请求参数错误'
+          message = backendMessage || '请求参数错误'
           break
         case 401:
-          message = 'API密钥无效或已过期'
+          message = backendMessage || 'API密钥无效或已过期'
           break
         case 403:
-          message = '没有权限访问此资源'
+          message = backendMessage || '没有权限访问此资源'
           break
         case 404:
-          message = '请求的资源不存在'
+          message = backendMessage || '请求的资源不存在'
           break
         case 413:
-          message = '文件大小超出限制'
+          message = backendMessage || '文件大小超出限制'
           break
         case 429:
-          message = '请求过于频繁，请稍后再试'
+          message = backendMessage || '请求过于频繁，请稍后再试'
           break
         case 500:
-          message = '服务器内部错误'
+          message = backendMessage || '服务器内部错误'
           break
         default:
-          message = data?.message || `请求失败 (${status})`
+          message = backendMessage || `请求失败 (${status})`
       }
     } else if (error.request) {
       message = '网络连接失败，请检查网络设置'

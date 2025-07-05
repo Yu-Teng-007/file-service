@@ -58,35 +58,12 @@ export const useFoldersStore = defineStore('folders', () => {
     const map = new Map<string, FolderInfo>()
     const roots: FolderInfo[] = []
 
-    // 检查后端是否已经有"全部"文件夹
-    const hasAllFolder = folders.some(folder => folder.id === 'all')
-
-    // 如果后端没有"全部"文件夹，则创建虚拟的【全部】文件夹
-    if (!hasAllFolder) {
-      const allFolder: FolderInfo = {
-        id: 'all',
-        name: '全部',
-        path: '/',
-        fileCount: 0, // 这里可以计算所有文件的总数
-        totalSize: 0,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        isSystem: true,
-        children: [],
-      }
-
-      // 计算所有文件夹的文件总数
-      allFolder.fileCount = folders.reduce((total, folder) => total + folder.fileCount, 0)
-      allFolder.totalSize = folders.reduce((total, folder) => total + folder.totalSize, 0)
-
-      // 将虚拟"全部"文件夹添加到列表开头
-      folders.unshift(allFolder)
-    }
-
+    // 创建映射
     folders.forEach(folder => {
       map.set(folder.id, { ...folder, children: [] })
     })
 
+    // 构建树形结构
     folders.forEach(folder => {
       const node = map.get(folder.id)!
       if (folder.parentId && map.has(folder.parentId)) {
@@ -98,16 +75,14 @@ export const useFoldersStore = defineStore('folders', () => {
       }
     })
 
-    // 确保【全部】文件夹在最前面
+    // 确保【全部】文件夹在最前面（如果存在）
     const allFolderNode = roots.find(node => node.id === 'all')
     if (allFolderNode) {
-      // 如果"全部"文件夹在roots中，将其移到最前面
       const otherRoots = roots.filter(node => node.id !== 'all')
       return [allFolderNode, ...otherRoots]
-    } else {
-      // 如果没有"全部"文件夹，直接返回roots
-      return roots
     }
+
+    return roots
   }
 
   const addFolder = (folder: FolderInfo) => {

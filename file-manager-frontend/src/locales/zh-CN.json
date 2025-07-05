@@ -142,9 +142,7 @@
     "deleteSuccess": "文件夹删除成功",
     "deleteError": "文件夹删除失败",
     "deleteConfirm": "确认删除文件夹 \"{name}\" 吗？",
-    "deleteNotEmptyConfirm": "文件夹 \"{name}\" 不为空，包含子文件夹或文件。<br/><strong>强制删除将永久删除所有内容，此操作不可恢复！</strong><br/>确认要强制删除吗？",
     "deleteTitle": "删除文件夹",
-    "forceDelete": "强制删除",
     "loadError": "加载文件夹失败",
     "updateSuccess": "文件夹更新成功"
   },

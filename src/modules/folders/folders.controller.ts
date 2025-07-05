@@ -11,14 +11,7 @@ import {
   ParseUUIDPipe,
   BadRequestException,
 } from '@nestjs/common'
-import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
-  ApiParam,
-  ApiQuery,
-  ApiBody,
-} from '@nestjs/swagger'
+import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiQuery, ApiBody } from '@nestjs/swagger'
 import { FoldersService } from './folders.service'
 import { ApiKeyAuth } from '../auth/decorators/api-key-auth.decorator'
 import {
@@ -34,9 +27,17 @@ export class FoldersController {
   constructor(private readonly foldersService: FoldersService) {}
 
   @Get()
-  @ApiOperation({ summary: '获取文件夹列表', description: '获取文件夹树形结构或指定父文件夹下的子文件夹' })
+  @ApiOperation({
+    summary: '获取文件夹列表',
+    description: '获取文件夹树形结构或指定父文件夹下的子文件夹',
+  })
   @ApiQuery({ name: 'parentId', description: '父文件夹ID', required: false })
-  @ApiQuery({ name: 'includeFiles', description: '是否包含文件统计', required: false, type: Boolean })
+  @ApiQuery({
+    name: 'includeFiles',
+    description: '是否包含文件统计',
+    required: false,
+    type: Boolean,
+  })
   @ApiResponse({
     status: HttpStatus.OK,
     description: '获取文件夹列表成功',
@@ -122,9 +123,11 @@ export class FoldersController {
 
   @Delete(':id')
   @ApiKeyAuth()
-  @ApiOperation({ summary: '删除文件夹', description: '删除文件夹（可选择是否强制删除）' })
+  @ApiOperation({
+    summary: '删除文件夹',
+    description: '删除指定的文件夹（需要先清空文件夹中的所有文件和子文件夹）',
+  })
   @ApiParam({ name: 'id', description: '文件夹ID' })
-  @ApiQuery({ name: 'force', description: '是否强制删除（包含子文件夹和文件）', required: false, type: Boolean })
   @ApiResponse({
     status: HttpStatus.OK,
     description: '文件夹删除成功',
@@ -132,11 +135,19 @@ export class FoldersController {
   })
   @ApiResponse({ status: HttpStatus.NOT_FOUND, description: '文件夹不存在' })
   @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: '文件夹不为空，无法删除' })
-  async deleteFolder(
-    @Param('id', ParseUUIDPipe) id: string,
-    @Query('force') force?: boolean
-  ): Promise<ApiResponseDto> {
-    await this.foldersService.deleteFolder(id, force)
+  async deleteFolder(@Param('id') id: string): Promise<ApiResponseDto> {
+    // 检查特殊文件夹ID
+    if (id === 'all' || id === 'root') {
+      throw new BadRequestException('系统文件夹无法删除')
+    }
+
+    // 验证UUID格式
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+    if (!uuidRegex.test(id)) {
+      throw new BadRequestException('无效的文件夹ID格式')
+    }
+
+    await this.foldersService.deleteFolder(id)
     return {
       success: true,
       message: '文件夹删除成功',

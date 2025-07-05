@@ -396,6 +396,9 @@ export class FolderResponseDto {
 
   @ApiProperty({ description: '更新时间' })
   updatedAt: string
+
+  @ApiPropertyOptional({ description: '是否为系统文件夹' })
+  isSystem?: boolean
 }
 
 // ==================== 回收站相关 DTO ====================

@@ -109,6 +109,37 @@ export class FoldersService {
     }
   }
 
+  private async calculateAllFilesStats(): Promise<{ fileCount: number; totalSize: number }> {
+    try {
+      // 读取文件元数据来计算所有文件的统计信息
+      const metadataPath = join(this.uploadDir, 'metadata.json')
+
+      let fileMetadata: any = {}
+      try {
+        const metadataContent = await fs.readFile(metadataPath, 'utf-8')
+        fileMetadata = JSON.parse(metadataContent)
+      } catch (error) {
+        // 如果元数据文件不存在或读取失败，返回默认值
+        return { fileCount: 0, totalSize: 0 }
+      }
+
+      // 统计所有文件
+      let fileCount = 0
+      let totalSize = 0
+
+      for (const [fileId, metadata] of Object.entries(fileMetadata)) {
+        const file = metadata as any
+        fileCount++
+        totalSize += file.size || 0
+      }
+
+      return { fileCount, totalSize }
+    } catch (error) {
+      console.error('计算所有文件统计信息失败:', error)
+      return { fileCount: 0, totalSize: 0 }
+    }
+  }
+
   async getFolders(parentId?: string, includeFiles?: boolean): Promise<FolderResponseDto[]> {
     const folders = await this.loadFolders()
 
@@ -121,6 +152,26 @@ export class FoldersService {
     const shouldIncludeFiles = includeFiles !== false
 
     const result: FolderResponseDto[] = []
+
+    // 如果没有指定父文件夹，添加系统【全部】文件夹
+    if (!parentId) {
+      const allFolderStats = shouldIncludeFiles
+        ? await this.calculateAllFilesStats()
+        : { fileCount: 0, totalSize: 0 }
+
+      result.push({
+        id: 'all',
+        name: '全部',
+        path: '/',
+        parentId: null,
+        fileCount: allFolderStats.fileCount,
+        totalSize: allFolderStats.totalSize,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        isSystem: true,
+      })
+    }
+
     for (const folder of filteredFolders) {
       const stats = shouldIncludeFiles
         ? await this.calculateFolderStats(folder.id)
@@ -135,6 +186,7 @@ export class FoldersService {
         totalSize: stats.totalSize,
         createdAt: folder.createdAt,
         updatedAt: folder.updatedAt,
+        isSystem: false,
       })
     }
 
@@ -142,6 +194,22 @@ export class FoldersService {
   }
 
   async getFolderById(id: string): Promise<FolderResponseDto> {
+    // 处理系统文件夹【全部】
+    if (id === 'all') {
+      const allFolderStats = await this.calculateAllFilesStats()
+      return {
+        id: 'all',
+        name: '全部',
+        path: '/',
+        parentId: null,
+        fileCount: allFolderStats.fileCount,
+        totalSize: allFolderStats.totalSize,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        isSystem: true,
+      }
+    }
+
     const folders = await this.loadFolders()
     const folder = folders.find(f => f.id === id)
 
@@ -160,6 +228,7 @@ export class FoldersService {
       totalSize: stats.totalSize,
       createdAt: folder.createdAt,
       updatedAt: folder.updatedAt,
+      isSystem: false,
     }
   }
 
@@ -223,6 +292,7 @@ export class FoldersService {
       totalSize: newFolder.totalSize,
       createdAt: newFolder.createdAt,
       updatedAt: newFolder.updatedAt,
+      isSystem: false,
     }
   }
 
@@ -280,6 +350,7 @@ export class FoldersService {
       totalSize: folders[folderIndex].totalSize,
       createdAt: folders[folderIndex].createdAt,
       updatedAt: folders[folderIndex].updatedAt,
+      isSystem: false,
     }
   }
 
@@ -302,7 +373,7 @@ export class FoldersService {
     }
   }
 
-  async deleteFolder(id: string, force?: boolean): Promise<void> {
+  async deleteFolder(id: string): Promise<void> {
     const folders = await this.loadFolders()
     const folderIndex = folders.findIndex(f => f.id === id)
 
@@ -314,19 +385,14 @@ export class FoldersService {
 
     // 检查是否有子文件夹
     const hasChildren = folders.some(f => f.parentId === id)
-    if (hasChildren && !force) {
-      throw new BadRequestException('文件夹不为空，无法删除。使用 force=true 强制删除')
+    if (hasChildren) {
+      throw new BadRequestException('文件夹包含子文件夹，请先删除所有子文件夹')
     }
 
-    // 检查是否有文件（这里需要实际查询文件系统或数据库）
+    // 检查是否有文件
     const stats = await this.calculateFolderStats(id)
-    if (stats.fileCount > 0 && !force) {
-      throw new BadRequestException('文件夹包含文件，无法删除。使用 force=true 强制删除')
-    }
-
-    if (force) {
-      // 递归删除所有子文件夹
-      await this.deleteChildrenFolders(folders, id)
+    if (stats.fileCount > 0) {
+      throw new BadRequestException('文件夹包含文件，请先清空文件夹中的所有文件')
     }
 
     // 删除文件夹
@@ -343,29 +409,58 @@ export class FoldersService {
     }
   }
 
-  private async deleteChildrenFolders(folders: FolderInfo[], parentId: string) {
-    const children = folders.filter(f => f.parentId === parentId)
-
-    for (const child of children) {
-      // 递归删除子文件夹的子文件夹
-      await this.deleteChildrenFolders(folders, child.id)
-
-      // 删除子文件夹
-      const childIndex = folders.findIndex(f => f.id === child.id)
-      if (childIndex !== -1) {
-        folders.splice(childIndex, 1)
-      }
-    }
-  }
-
   async getFolderFiles(folderId: string, page?: number, limit?: number) {
-    // 这里应该查询文件数据库或文件系统
-    // 简化实现，返回空数组
-    return {
-      files: [],
-      total: 0,
-      page: page || 1,
-      limit: limit || 20,
+    try {
+      // 读取文件元数据来获取文件夹中的文件
+      const metadataPath = join(this.uploadDir, 'metadata.json')
+
+      let fileMetadata: any = {}
+      try {
+        const metadataContent = await fs.readFile(metadataPath, 'utf-8')
+        fileMetadata = JSON.parse(metadataContent)
+      } catch (error) {
+        // 如果元数据文件不存在或读取失败，返回空结果
+        return {
+          files: [],
+          total: 0,
+          page: page || 1,
+          limit: limit || 20,
+        }
+      }
+
+      // 筛选属于该文件夹的文件
+      const folderFiles = []
+      for (const [fileId, metadata] of Object.entries(fileMetadata)) {
+        const file = metadata as any
+        if (file.folderId === folderId) {
+          folderFiles.push({
+            id: fileId,
+            ...file,
+          })
+        }
+      }
+
+      // 分页处理
+      const pageNum = page || 1
+      const pageSize = limit || 20
+      const startIndex = (pageNum - 1) * pageSize
+      const endIndex = startIndex + pageSize
+      const paginatedFiles = folderFiles.slice(startIndex, endIndex)
+
+      return {
+        files: paginatedFiles,
+        total: folderFiles.length,
+        page: pageNum,
+        limit: pageSize,
+      }
+    } catch (error) {
+      console.error('获取文件夹文件列表失败:', error)
+      return {
+        files: [],
+        total: 0,
+        page: page || 1,
+        limit: limit || 20,
+      }
     }
   }
 
